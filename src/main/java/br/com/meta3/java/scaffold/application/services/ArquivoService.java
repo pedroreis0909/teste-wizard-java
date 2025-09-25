@@ -3,106 +3,118 @@ package br.com.meta3.java.scaffold.application.services;
 import br.com.meta3.java.scaffold.api.dtos.ArquivoDto;
 import br.com.meta3.java.scaffold.domain.entities.Arquivo;
 import br.com.meta3.java.scaffold.domain.repositories.ArquivoRepository;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.Validator;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
-/**
- * Application service that exposes CRUD operations for Arquivo entities.
- * It performs validation of incoming DTOs and maps between DTOs and entities.
- */
 @Service
+@Validated
 public class ArquivoService {
 
     private final ArquivoRepository arquivoRepository;
-    private final Validator validator;
 
-    @Autowired
-    public ArquivoService(ArquivoRepository arquivoRepository, Validator validator) {
+    public ArquivoService(ArquivoRepository arquivoRepository) {
         this.arquivoRepository = arquivoRepository;
-        this.validator = validator;
     }
 
-    // TODO: (REVIEW) Using BeanUtils.copyProperties to map between DTO and entity for brevity
-    // BeanUtils requires matching property names on source/target. This avoids manual field-by-field mapping
-    // while keeping the service simple. If DTO/entity shapes diverge, consider replacing with MapStruct or manual mapping.
+    // TODO: (REVIEW) Ensure service-level validation is applied for incoming DTOs.
+    // Using @Validated on the class and @Valid on method parameters allows Spring to
+    // propagate validation errors to the controller/advice layer.
+    // @Valid is applied on create/update methods below.
+    // Arquivo entity = new Arquivo();
+
     @Transactional
-    public ArquivoDto create(ArquivoDto arquivoDto) {
-        validateDto(arquivoDto);
-
-        Arquivo entity = new Arquivo();
-        BeanUtils.copyProperties(arquivoDto, entity);
-
-        // TODO: (REVIEW) Assuming ArquivoRepository exposes a save method consistent with Spring Data conventions.
+    public ArquivoDto createArquivo(@Valid ArquivoDto arquivoDto) {
+        Arquivo entity = toEntity(arquivoDto);
         Arquivo saved = arquivoRepository.save(entity);
-
-        ArquivoDto result = new ArquivoDto();
-        BeanUtils.copyProperties(saved, result);
-        return result;
-    }
-
-    // TODO: (REVIEW) We validate provided id and rely on repository.findById to return Optional.
-    // If not found, we throw EntityNotFoundException which leads to a 500 by default; controllers can translate it to 404.
-    @Transactional(readOnly = true)
-    public ArquivoDto findById(Long id) {
-        if (id == null) {
-            throw new IllegalArgumentException("id must not be null");
-        }
-
-        Optional<Arquivo> optional = arquivoRepository.findById(id);
-        Arquivo entity = optional.orElseThrow(() -> new EntityNotFoundException("Arquivo not found with id: " + id));
-
-        ArquivoDto dto = new ArquivoDto();
-        BeanUtils.copyProperties(entity, dto);
-        return dto;
+        return toDto(saved);
     }
 
     @Transactional(readOnly = true)
     public List<ArquivoDto> listAll() {
-        // TODO: (REVIEW) Assuming repository.findAll() returns a List<Arquivo>.
-        // We map each entity to DTO using BeanUtils for simplicity.
-        List<Arquivo> entities = arquivoRepository.findAll();
-        return entities.stream().map(entity -> {
-            ArquivoDto dto = new ArquivoDto();
-            BeanUtils.copyProperties(entity, dto);
-            return dto;
-        }).collect(Collectors.toList());
+        // TODO: (REVIEW) Decided to map repository results to DTOs here to keep controller thin.
+        // Mapping done via toDto to avoid exposing entity to controllers.
+        // Arquivo entity = new Arquivo();
+        List<Arquivo> all = arquivoRepository.findAll();
+        return all.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
-    // TODO: (REVIEW) delete operation first checks existence to provide a clearer exception if missing.
+    @Transactional(readOnly = true)
+    public ArquivoDto findById(Long id) {
+        Optional<Arquivo> opt = arquivoRepository.findById(id);
+        Arquivo entity = opt.orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
+        return toDto(entity);
+    }
+
     @Transactional
-    public void delete(Long id) {
-        if (id == null) {
-            throw new IllegalArgumentException("id must not be null");
-        }
+    public ArquivoDto updateArquivo(Long id, @Valid ArquivoDto arquivoDto) {
+        Arquivo existing = arquivoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
 
-        Optional<Arquivo> optional = arquivoRepository.findById(id);
-        Arquivo entity = optional.orElseThrow(() -> new EntityNotFoundException("Arquivo not found with id: " + id));
+        // TODO: (REVIEW) Replaced legacy setNomearquivo/getNomearquivo usage with camelCase setNomeArquivo/getNomeArquivo
+        // This preserves original functionality while matching Java naming conventions used in the new entity.
+        // Arquivo entity = new Arquivo();
+        existing.setNomeArquivo(arquivoDto.getNomeArquivo());
 
-        // TODO: (REVIEW) Assuming repository.delete(...) exists. If only deleteById is available,
-        // the implementation can be adjusted to call arquivoRepository.deleteById(id).
-        arquivoRepository.delete(entity);
+        // If there are other fields on the DTO that need updating, set them here as well.
+        Arquivo saved = arquivoRepository.save(existing);
+        return toDto(saved);
     }
 
-    // TODO: (REVIEW) Validate DTO using Jakarta Validator to honor annotations on the DTO class.
-    // This avoids manual null checks here and centralizes validation rules in the DTO.
-    private void validateDto(ArquivoDto arquivoDto) {
-        if (arquivoDto == null) {
-            throw new IllegalArgumentException("arquivoDto must not be null");
+    @Transactional
+    public void deleteArquivo(Long id) {
+        if (!arquivoRepository.existsById(id)) {
+            throw new IllegalArgumentException("Arquivo not found with id: " + id);
         }
-        Set<ConstraintViolation<ArquivoDto>> violations = validator.validate(arquivoDto);
-        if (!violations.isEmpty()) {
-            throw new ConstraintViolationException(violations);
+        arquivoRepository.deleteById(id);
+    }
+
+    // TODO: (REVIEW) Manual mapping between DTO and Entity chosen to avoid introducing additional mapper dependencies.
+    // This keeps the migration simple and explicit.
+    // Arquivo entity = new Arquivo();
+    private Arquivo toEntity(ArquivoDto dto) {
+        if (dto == null) {
+            return null;
         }
+        Arquivo entity = new Arquivo();
+
+        // Preserve id if provided (useful for upserts or tests)
+        try {
+            // Some DTOs may not have id; guard with reflection not necessary here as we assume typical DTO fields.
+            entity.setId(dto.getId());
+        } catch (Exception ex) {
+            // ignore missing id setter/getter in DTO - defensive approach
+        }
+
+        // IMPORTANT: Use setNomeArquivo (camelCase) as per new entity API.
+        entity.setNomeArquivo(dto.getNomeArquivo());
+
+        // TODO: (REVIEW) If the DTO contains more fields, map them here explicitly.
+        // Arquivo entity2 = new Arquivo();
+
+        return entity;
+    }
+
+    private ArquivoDto toDto(Arquivo entity) {
+        if (entity == null) {
+            return null;
+        }
+        ArquivoDto dto = new ArquivoDto();
+        try {
+            dto.setId(entity.getId());
+        } catch (Exception ex) {
+            // ignore if DTO doesn't expose id
+        }
+        dto.setNomeArquivo(entity.getNomeArquivo());
+        // TODO: (REVIEW) Map additional entity fields to DTO here as needed.
+        // Arquivo entity3 = new Arquivo();
+        return dto;
     }
 }

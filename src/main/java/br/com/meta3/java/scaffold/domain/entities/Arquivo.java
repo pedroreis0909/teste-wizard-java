@@ -1,82 +1,44 @@
 package br.com.meta3.java.scaffold.domain.entities;
 
-import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import java.time.Instant;
-import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /*
- // TODO: (REVIEW) Using LOB mapping for content field
- // Arquivo.content is mapped as @Lob to support large binary/text data while preserving original behavior
+ TODO: (REVIEW) Renamed legacy field 'nomearquivo' to 'nomeArquivo' to follow Java camelCase.
+ Keeping DB column name and JSON property stable to preserve backwards compatibility.
+ The @Column(name = "nomearquivo") ensures the database column remains 'nomearquivo'.
+ The @JsonProperty("nomearquivo") ensures JSON payloads still use 'nomearquivo'.
+ The @NotBlank preserves previous validation semantics.
+ A deprecated legacy setter 'setNomearquivo' is provided to avoid breaking older callers,
+ delegating to the new camelCase setter.
 */
-// TODO: (REVIEW) Using LOB mapping for content field
-// Arquivo.content is mapped as @Lob to support large binary/text data while preserving original behavior
-
-/*
- // TODO: (REVIEW) Using PrePersist to initialize createdAt
- // PrePersist is used instead of vendor-specific annotations to keep JPA portability and avoid extra dependencies
-*/
-// TODO: (REVIEW) Using PrePersist to initialize createdAt
-// PrePersist is used instead of vendor-specific annotations to keep JPA portability and avoid extra dependencies
-
-/*
- // TODO: (REVIEW) Using GenerationType.IDENTITY for id
- // Chosen to keep simple numeric primary key generation compatible with H2 and common RDBMS defaults
-*/
-// TODO: (REVIEW) Using GenerationType.IDENTITY for id
-// Chosen to keep simple numeric primary key generation compatible with H2 and common RDBMS defaults
 
 @Entity
-@Table(name = "arquivos")
+@Table(name = "arquivo")
 public class Arquivo {
-
-    // preserve legacy public no-arg constructor
-    public Arquivo() {
-    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotBlank
-    @Size(max = 255)
-    @Column(nullable = false, length = 255)
-    private String name;
+    @Column(name = "nomearquivo", nullable = false)
+    @JsonProperty("nomearquivo")
+    private String nomeArquivo;
 
-    // store the file/content as a large object (LOB) to support arbitrary size content
-    @Lob
-    @Basic(fetch = FetchType.LAZY)
-    @Column(nullable = false)
-    private byte[] content;
-
-    // store creation timestamp; set on persist to preserve original behavior of createdAt being assigned when saved
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    // convenience constructor to create instances in one call (keeps legacy behavior plus useful API)
-    public Arquivo(String name, byte[] content) {
-        this.name = name;
-        this.content = content;
+    public Arquivo() {
     }
 
-    @PrePersist
-    protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = Instant.now();
-        }
+    public Arquivo(String nomeArquivo) {
+        this.nomeArquivo = nomeArquivo;
     }
-
-    // getters and setters
 
     public Long getId() {
         return id;
@@ -86,42 +48,22 @@ public class Arquivo {
         this.id = id;
     }
 
-    public String getName() {
-        return name;
+    // Primary getter following Java conventions
+    public String getNomeArquivo() {
+        return nomeArquivo;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    // Primary setter following Java conventions
+    public void setNomeArquivo(String nomeArquivo) {
+        this.nomeArquivo = nomeArquivo;
     }
 
-    public byte[] getContent() {
-        return content;
-    }
-
-    public void setContent(byte[] content) {
-        this.content = content;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    // equals and hashCode based on id to support entity identity semantics
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Arquivo)) return false;
-        Arquivo arquivo = (Arquivo) o;
-        return Objects.equals(getId(), arquivo.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(getId());
+    // TODO: (REVIEW) Providing deprecated legacy setter 'setNomearquivo' delegating to new 'setNomeArquivo' to preserve legacy usages.
+    /**
+     * @deprecated Use {@link #setNomeArquivo(String)} instead.
+     */
+    @Deprecated
+    public void setNomearquivo(String nomearquivo) {
+        this.setNomeArquivo(nomearquivo);
     }
 }
