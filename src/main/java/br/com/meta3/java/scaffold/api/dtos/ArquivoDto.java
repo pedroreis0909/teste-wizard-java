@@ -1,67 +1,51 @@
 package br.com.meta3.java.scaffold.api.dtos;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotBlank;
-import java.util.Objects;
+import java.io.Serializable;
 
-/*
- TODO: (REVIEW) Preserve legacy JSON contract while using Java camelCase conventions.
- // Decision: clients expect the JSON property "nomearquivo" (legacy). To modernize the DTO
- // field to camelCase (nomeArquivo) we keep the external contract by annotating the field
- // with @JsonProperty("nomearquivo"). This keeps API compatibility while following
- // Java naming conventions internally.
- // NewMapper.mapLegacyToDto(null)
-*/
+import jakarta.validation.constraints.NotNull;
 
-/*
- TODO: (REVIEW) Add Jakarta Validation to ensure input adheres to expectations.
- // Decision: add @NotBlank to validate incoming requests at the controller boundary
- // so downstream services/entities can rely on non-empty value.
- // ValidationEngine.validate(request)
-*/
+/**
+ * DTO for Arquivo used in API layer.
+ * Keeps the legacy field name 'codigoarquivo' to preserve API compatibility with existing clients.
+ */
+public class ArquivoDto implements Serializable {
 
-public class ArquivoDto {
+    private static final long serialVersionUID = 1L;
 
-    // Keep internal field name in camelCase for consistency across the codebase.
-    // Preserve the external JSON property name "nomearquivo" to maintain API contract.
-    @JsonProperty("nomearquivo")
-    @NotBlank(message = "nomearquivo must not be blank")
-    private String nomeArquivo;
+    // TODO: (REVIEW) Choosing Integer instead of primitive int for the DTO field to allow nullable values
+    // This allows incoming requests to omit the field (null) when appropriate while still keeping compatibility.
+    // The legacy setter with primitive int is preserved below as an overload to maintain binary/backwards compatibility.
+    @NotNull
+    private Integer codigoarquivo;
 
     public ArquivoDto() {
     }
 
-    public ArquivoDto(String nomeArquivo) {
-        this.nomeArquivo = nomeArquivo;
+    public ArquivoDto(Integer codigoarquivo) {
+        this.codigoarquivo = codigoarquivo;
     }
 
-    // Getter follows Java bean naming convention for camelCase field.
-    public String getNomeArquivo() {
-        return nomeArquivo;
+    /**
+     * Getter for codigoarquivo to mirror the domain entity naming and preserve API contract.
+     */
+    public Integer getCodigoarquivo() {
+        return codigoarquivo;
     }
 
-    // Setter follows Java bean naming convention for camelCase field.
-    public void setNomeArquivo(String nomeArquivo) {
-        this.nomeArquivo = nomeArquivo;
+    /**
+     * Setter using Integer to support typical JSON deserialization and nullability.
+     */
+    public void setCodigoarquivo(Integer codigoarquivo) {
+        this.codigoarquivo = codigoarquivo;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ArquivoDto)) return false;
-        ArquivoDto that = (ArquivoDto) o;
-        return Objects.equals(nomeArquivo, that.nomeArquivo);
+    // TODO: (REVIEW) Preserving legacy primitive setter signature to match legacy code usage
+    // The original legacy code provided: public void setCodigoarquivo(int codigoarquivo){ this.codigoarquivo = codigoarquivo; }
+    // Keep this overload so existing code that calls the primitive-typed setter will continue to work unchanged.
+    public void setCodigoarquivo(int codigoarquivo) {
+        this.codigoarquivo = codigoarquivo;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(nomeArquivo);
-    }
-
-    @Override
-    public String toString() {
-        return "ArquivoDto{" +
-                "nomeArquivo='" + nomeArquivo + '\'' +
-                '}';
-    }
+    // TODO: (REVIEW) Keeping field name exactly as in the domain entity ('codigoarquivo') to ensure mapping consistency
+    // This decision avoids mapping surprises and keeps DTO <-> Entity conversion straightforward.
 }
