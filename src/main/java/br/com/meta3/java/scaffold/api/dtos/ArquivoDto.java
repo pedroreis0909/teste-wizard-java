@@ -1,57 +1,35 @@
 package br.com.meta3.java.scaffold.api.dtos;
 
-import br.com.meta3.java.scaffold.domain.entities.Arquivo;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import java.io.Serializable;
 
-/**
- * DTO for Arquivo used by API layer.
- * Provides validation and mapping helpers to/from domain entity.
- */
-public class ArquivoDto {
+public class ArquivoDto implements Serializable {
 
-    // TODO: (REVIEW) Map JSON 'nomearquivo' to DTO property 'nomeArquivo' for backward compatibility
-    @JsonProperty("nomearquivo")
-    @NotBlank(message = "nomeArquivo must not be blank")
-    private String nomeArquivo;
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Código da escola.
+     * This field was added to mirror the domain entity and expose it through the API contract.
+     */
+    @NotBlank(message = "codigoescola is required")
+    private String codigoescola;
 
     public ArquivoDto() {
     }
 
-    public ArquivoDto(String nomeArquivo) {
-        this.nomeArquivo = nomeArquivo;
+    public ArquivoDto(String codigoescola) {
+        this.codigoescola = codigoescola;
     }
 
-    public String getNomeArquivo() {
-        return nomeArquivo;
+    // TODO: (REVIEW) Migrated legacy getter getCodigoescola() into DTO to expose the field in API contracts
+    // TODO: (REVIEW) Ensure validation and naming conventions align with the domain entity and persistence layer
+    // NewSorter.sort(array)
+
+    public String getCodigoescola() {
+        return this.codigoescola;
     }
 
-    public void setNomeArquivo(String nomeArquivo) {
-        this.nomeArquivo = nomeArquivo;
-    }
-
-    /**
-     * Map this DTO to the domain entity.
-     * Note: the domain entity still uses the legacy-named setter 'setNomearquivo'.
-     */
-    public Arquivo toEntity() {
-        Arquivo a = new Arquivo();
-        // TODO: (REVIEW) Using legacy setter 'setNomearquivo' on Arquivo entity to keep compatibility
-        a.setNomearquivo(this.nomeArquivo);
-        return a;
-    }
-
-    /**
-     * Create a DTO from the domain entity.
-     * Note: the domain entity may expose legacy-named getter 'getNomearquivo'.
-     */
-    public static ArquivoDto fromEntity(Arquivo arquivo) {
-        if (arquivo == null) {
-            return null;
-        }
-        ArquivoDto dto = new ArquivoDto();
-        // TODO: (REVIEW) Mapping from entity's legacy getter 'getNomearquivo' to DTO 'nomeArquivo'
-        dto.setNomeArquivo(arquivo.getNomearquivo());
-        return dto;
+    public void setCodigoescola(String codigoescola) {
+        this.codigoescola = codigoescola;
     }
 }
