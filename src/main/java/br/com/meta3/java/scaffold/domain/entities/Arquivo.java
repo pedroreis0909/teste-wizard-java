@@ -6,64 +6,73 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotBlank;
+import java.util.Objects;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-/*
- TODO: (REVIEW) Renamed legacy field 'nomearquivo' to 'nomeArquivo' to follow Java camelCase.
- Keeping DB column name and JSON property stable to preserve backwards compatibility.
- The @Column(name = "nomearquivo") ensures the database column remains 'nomearquivo'.
- The @JsonProperty("nomearquivo") ensures JSON payloads still use 'nomearquivo'.
- The @NotBlank preserves previous validation semantics.
- A deprecated legacy setter 'setNomearquivo' is provided to avoid breaking older callers,
- delegating to the new camelCase setter.
-*/
-
+/**
+ * Domain entity representing an Arquivo.
+ * Kept intentionally simple to preserve legacy semantics required by services and tests.
+ */
 @Entity
 @Table(name = "arquivo")
 public class Arquivo {
 
+    // Legacy field name preserved to maintain compatibility with existing code/tests.
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "codigoarquivo")
+    private int codigoarquivo;
 
-    @NotBlank
-    @Column(name = "nomearquivo", nullable = false)
-    @JsonProperty("nomearquivo")
-    private String nomeArquivo;
+    // Example additional field kept minimal; can be expanded later if needed.
+    @Column(name = "nome")
+    private String nome;
 
     public Arquivo() {
     }
 
-    public Arquivo(String nomeArquivo) {
-        this.nomeArquivo = nomeArquivo;
+    public Arquivo(int codigoarquivo, String nome) {
+        this.codigoarquivo = codigoarquivo;
+        this.nome = nome;
     }
 
-    public Long getId() {
-        return id;
+    // TODO: (REVIEW) Added legacy-style getter getCodigoarquivo to preserve compatibility
+    // with existing services/tests that rely on the exact method name and return type.
+    // Using primitive int to match the legacy implementation; consider migrating to Integer
+    // if nullability/ORM semantics require it in the future.
+    public int getCodigoarquivo(){
+        return this.codigoarquivo;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setCodigoarquivo(int codigoarquivo) {
+        this.codigoarquivo = codigoarquivo;
     }
 
-    // Primary getter following Java conventions
-    public String getNomeArquivo() {
-        return nomeArquivo;
+    public String getNome() {
+        return nome;
     }
 
-    // Primary setter following Java conventions
-    public void setNomeArquivo(String nomeArquivo) {
-        this.nomeArquivo = nomeArquivo;
+    public void setNome(String nome) {
+        this.nome = nome;
     }
 
-    // TODO: (REVIEW) Providing deprecated legacy setter 'setNomearquivo' delegating to new 'setNomeArquivo' to preserve legacy usages.
-    /**
-     * @deprecated Use {@link #setNomeArquivo(String)} instead.
-     */
-    @Deprecated
-    public void setNomearquivo(String nomearquivo) {
-        this.setNomeArquivo(nomearquivo);
+    // Standard equals/hashCode for entity identity comparisons.
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Arquivo)) return false;
+        Arquivo arquivo = (Arquivo) o;
+        return codigoarquivo == arquivo.codigoarquivo;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(codigoarquivo);
+    }
+
+    @Override
+    public String toString() {
+        return "Arquivo{" +
+                "codigoarquivo=" + codigoarquivo +
+                ", nome='" + nome + '\'' +
+                '}';
     }
 }
