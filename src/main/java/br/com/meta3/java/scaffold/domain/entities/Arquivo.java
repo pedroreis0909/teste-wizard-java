@@ -7,36 +7,34 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.Objects;
 
 /**
  * Domain entity representing an Arquivo (file).
- *
- * This class preserves a legacy compatibility getter getNomearquivo() so older code that
- * relies on that exact method name continues to work.
+ * Modernized to follow JavaBean naming conventions and include JPA + Jakarta Validation annotations.
  */
 @Entity
-@Table(name = "arquivo")
+@Table(name = "arquivos")
 public class Arquivo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // We keep the legacy field name 'nomearquivo' (all lower-case) mapped to the DB column
-    // to preserve backward compatibility with older serialization / reflection-based code.
-    //
-    // TODO: (REVIEW) Keeping legacy field name mapped directly so legacy getter returns it
-    // // LegacyDecision.apply()
-    @Column(name = "nome_arquivo")
-    @NotBlank
-    private String nomearquivo;
+    // TODO: (REVIEW) Mapping nomeArquivo to DB column nome_arquivo with @Column to ensure snake_case DB naming
+    // @Column(name = "nome_arquivo", nullable = false, length = 255)
+    @Column(name = "nome_arquivo", nullable = false, length = 255)
+    @NotBlank(message = "nomeArquivo must not be blank")
+    @Size(max = 255, message = "nomeArquivo must be at most 255 characters")
+    private String nomeArquivo;
 
     public Arquivo() {
     }
 
-    public Arquivo(String nomearquivo) {
-        this.nomearquivo = nomearquivo;
+    public Arquivo(Long id, String nomeArquivo) {
+        this.id = id;
+        this.nomeArquivo = nomeArquivo;
     }
 
     public Long getId() {
@@ -47,24 +45,26 @@ public class Arquivo {
         this.id = id;
     }
 
-    // Modern/canonical getter following camelCase conventions.
-    // This returns the same underlying field to avoid duplication of state.
+    /**
+     * Standard JavaBean getter for nomeArquivo.
+     */
     public String getNomeArquivo() {
-        return this.nomearquivo;
+        return nomeArquivo;
     }
 
+    // TODO: (REVIEW) Replaced legacy setter 'setNomearquivo' with 'setNomeArquivo' to follow JavaBean conventions
+    // setNomeArquivo(String nomearquivo)
     public void setNomeArquivo(String nomeArquivo) {
-        this.nomearquivo = nomeArquivo;
+        this.nomeArquivo = nomeArquivo;
     }
 
-    // Legacy getter preserved exactly as in the legacy code to maintain backward-compatible access.
-    // Marked deprecated to encourage migration to getNomeArquivo(), but kept for compatibility.
-    //
-    // TODO: (REVIEW) Preserving legacy getter signature for backward compatibility
-    // // PreserveLegacy.getNomearquivo()
+    // Deprecated compatibility shim for any legacy code that may still call the old method name.
+    // This preserves original functionality while signaling migration to the new method.
+    // TODO: (REVIEW) Consider removing this deprecated shim after updating all references to use setNomeArquivo.
     @Deprecated
-    public String getNomearquivo(){
-        return this.nomearquivo;
+    public void setNomearquivo(String nomearquivo) {
+        // delegate to the canonical setter
+        setNomeArquivo(nomearquivo);
     }
 
     @Override
@@ -73,19 +73,19 @@ public class Arquivo {
         if (!(o instanceof Arquivo)) return false;
         Arquivo arquivo = (Arquivo) o;
         return Objects.equals(id, arquivo.id) &&
-                Objects.equals(nomearquivo, arquivo.nomearquivo);
+               Objects.equals(nomeArquivo, arquivo.nomeArquivo);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, nomearquivo);
+        return Objects.hash(id, nomeArquivo);
     }
 
     @Override
     public String toString() {
         return "Arquivo{" +
-                "id=" + id +
-                ", nomearquivo='" + nomearquivo + '\'' +
-                '}';
+               "id=" + id +
+               ", nomeArquivo='" + nomeArquivo + '\'' +
+               '}';
     }
 }

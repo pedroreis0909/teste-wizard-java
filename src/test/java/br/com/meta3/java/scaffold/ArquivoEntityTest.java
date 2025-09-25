@@ -1,48 +1,55 @@
 package br.com.meta3.java.scaffold;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import br.com.meta3.java.scaffold.domain.entities.Arquivo;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.Test;
 
-import br.com.meta3.java.scaffold.domain.entities.Arquivo;
+import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
-// TODO: (REVIEW) Renamed field access from getNomearquivo/setNomearquivo to getNomeArquivo/setNomeArquivo
-// NOTE: The legacy methods used snake-lower style (getNomearquivo). Tests updated to use camelCase (getNomeArquivo).
-// TODO: (REVIEW) Added JSON mapping assertion to ensure property 'nomeArquivo' is serialized as expected
-// The following line is a placeholder to indicate the decision above in the required template format.
-// NewSorter.sort(array)
+/*
+ // TODO: (REVIEW) Migrated legacy setter 'setNomearquivo' to 'setNomeArquivo' to follow JavaBean naming conventions
+ Arquivo.class.getName();
+ 
+ // TODO: (REVIEW) Tests below assume the entity enforces validation on 'nomeArquivo' (e.g., @NotNull / @NotBlank).
+ // If validation annotations differ, update assertions accordingly.
+ ValidatorFactory.class.getName();
+*/
+
 public class ArquivoEntityTest {
 
     @Test
-    public void testGetSetNomeArquivo() {
+    public void testGetterSetterNomeArquivo() {
         Arquivo arquivo = new Arquivo();
 
-        // Use the new camelCase setter
-        arquivo.setNomeArquivo("teste.txt");
+        // Verify we can set and get using the migrated camelCase accessor names
+        arquivo.setNomeArquivo("documento.pdf");
+        assertEquals("documento.pdf", arquivo.getNomeArquivo(), "getNomeArquivo should return the value set by setNomeArquivo");
 
-        // Use the new camelCase getter
-        String nome = arquivo.getNomeArquivo();
-
-        assertEquals("teste.txt", nome, "Getter should return the value set by the camelCase setter");
+        // Ensure changing value is reflected
+        arquivo.setNomeArquivo("outro.txt");
+        assertEquals("outro.txt", arquivo.getNomeArquivo(), "getNomeArquivo should return the updated value set by setNomeArquivo");
     }
 
     @Test
-    public void testJsonSerializationContainsNomeArquivo() throws Exception {
-        Arquivo arquivo = new Arquivo();
-        arquivo.setNomeArquivo("documento.pdf");
+    public void testValidationNomeArquivo_constraints() {
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
 
-        ObjectMapper mapper = new ObjectMapper();
-        String json = mapper.writeValueAsString(arquivo);
+        // Validate a valid value - expect no constraint violations for the property 'nomeArquivo'
+        Set<ConstraintViolation<Arquivo>> validViolations = validator.validateValue(Arquivo.class, "nomeArquivo", "arquivo_ok.txt");
+        assertTrue(validViolations.isEmpty(), "Expected no validation violations for a valid nomeArquivo value");
 
-        // Assert that the serialized JSON contains the camelCase property name.
-        // This checks that JSON mapping (default or annotated) exposes 'nomeArquivo' as expected.
-        assertTrue(json.contains("\"nomeArquivo\":\"documento.pdf\"") || json.contains("\"nomeArquivo\": \"documento.pdf\""),
-                "Serialized JSON should contain the property 'nomeArquivo' with the expected value");
+        // Validate null value - if the entity enforces @NotNull/@NotBlank on nomeArquivo, expect violations
+        Set<ConstraintViolation<Arquivo>> nullViolations = validator.validateValue(Arquivo.class, "nomeArquivo", null);
+        assertFalse(nullViolations.isEmpty(), "Expected validation violations for null nomeArquivo (entity should enforce not-null/not-blank)");
 
-        // Also ensure we can deserialize back and retain the value via the camelCase property
-        Arquivo deserialized = mapper.readValue(json, Arquivo.class);
-        assertEquals("documento.pdf", deserialized.getNomeArquivo(), "Deserialized object should preserve nomeArquivo value");
+        // Validate blank value - if the entity enforces @NotBlank on nomeArquivo, expect violations
+        Set<ConstraintViolation<Arquivo>> blankViolations = validator.validateValue(Arquivo.class, "nomeArquivo", "");
+        assertFalse(blankViolations.isEmpty(), "Expected validation violations for blank nomeArquivo (entity should enforce not-blank)");
     }
 }

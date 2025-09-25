@@ -3,17 +3,18 @@ package br.com.meta3.java.scaffold.application.services;
 import br.com.meta3.java.scaffold.api.dtos.ArquivoDto;
 import br.com.meta3.java.scaffold.domain.entities.Arquivo;
 import br.com.meta3.java.scaffold.domain.repositories.ArquivoRepository;
-import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Service responsible for business operations related to Arquivo.
+ * This class contains simple mapping logic between Arquivo and ArquivoDto,
+ * including validation for the nomeArquivo field.
+ */
 @Service
-@Validated
 public class ArquivoService {
 
     private final ArquivoRepository arquivoRepository;
@@ -22,99 +23,125 @@ public class ArquivoService {
         this.arquivoRepository = arquivoRepository;
     }
 
-    // TODO: (REVIEW) Ensure service-level validation is applied for incoming DTOs.
-    // Using @Validated on the class and @Valid on method parameters allows Spring to
-    // propagate validation errors to the controller/advice layer.
-    // @Valid is applied on create/update methods below.
-    // Arquivo entity = new Arquivo();
-
+    /**
+     * Creates a new Arquivo from the given DTO.
+     *
+     * @param dto the ArquivoDto containing the data to create the entity
+     * @return the created ArquivoDto
+     */
     @Transactional
-    public ArquivoDto createArquivo(@Valid ArquivoDto arquivoDto) {
-        Arquivo entity = toEntity(arquivoDto);
+    public ArquivoDto create(ArquivoDto dto) {
+        validateNomeArquivo(dto);
+
+        Arquivo entity = toEntity(dto);
+
+        // TODO: (REVIEW) Replaced legacy setter setNomearquivo with modern setNomeArquivo to follow camelCase convention
+        // The legacy code used: entity.setNomearquivo(...)
+        entity.setNomeArquivo(safeTrim(dto.getNomeArquivo()));
+
         Arquivo saved = arquivoRepository.save(entity);
         return toDto(saved);
     }
 
-    @Transactional(readOnly = true)
-    public List<ArquivoDto> listAll() {
-        // TODO: (REVIEW) Decided to map repository results to DTOs here to keep controller thin.
-        // Mapping done via toDto to avoid exposing entity to controllers.
-        // Arquivo entity = new Arquivo();
-        List<Arquivo> all = arquivoRepository.findAll();
-        return all.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+    /**
+     * Updates an existing Arquivo identified by id using values from the DTO.
+     *
+     * @param id  the id of the Arquivo to update
+     * @param dto the DTO with updated values
+     * @return the updated ArquivoDto
+     */
+    @Transactional
+    public ArquivoDto update(Long id, ArquivoDto dto) {
+        validateNomeArquivo(dto);
+
+        Optional<Arquivo> maybe = arquivoRepository.findById(id);
+        Arquivo entity = maybe.orElseThrow(() -> new RuntimeException("Arquivo not found with id: " + id));
+
+        // TODO: (REVIEW) Ensure mapping uses setNomeArquivo instead of legacy setNomearquivo to avoid compatibility issues
+        // Replacing legacy call:
+        // entity.setNomearquivo(dto.getNomeArquivo());
+        entity.setNomeArquivo(safeTrim(dto.getNomeArquivo()));
+
+        Arquivo updated = arquivoRepository.save(entity);
+        return toDto(updated);
     }
 
+    /**
+     * Finds an Arquivo by id and returns its DTO representation.
+     *
+     * @param id the id to search
+     * @return ArquivoDto if found
+     */
     @Transactional(readOnly = true)
     public ArquivoDto findById(Long id) {
-        Optional<Arquivo> opt = arquivoRepository.findById(id);
-        Arquivo entity = opt.orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
+        Arquivo entity = arquivoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Arquivo not found with id: " + id));
         return toDto(entity);
     }
 
-    @Transactional
-    public ArquivoDto updateArquivo(Long id, @Valid ArquivoDto arquivoDto) {
-        Arquivo existing = arquivoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
-
-        // TODO: (REVIEW) Replaced legacy setNomearquivo/getNomearquivo usage with camelCase setNomeArquivo/getNomeArquivo
-        // This preserves original functionality while matching Java naming conventions used in the new entity.
-        // Arquivo entity = new Arquivo();
-        existing.setNomeArquivo(arquivoDto.getNomeArquivo());
-
-        // If there are other fields on the DTO that need updating, set them here as well.
-        Arquivo saved = arquivoRepository.save(existing);
-        return toDto(saved);
-    }
-
-    @Transactional
-    public void deleteArquivo(Long id) {
-        if (!arquivoRepository.existsById(id)) {
-            throw new IllegalArgumentException("Arquivo not found with id: " + id);
-        }
-        arquivoRepository.deleteById(id);
-    }
-
-    // TODO: (REVIEW) Manual mapping between DTO and Entity chosen to avoid introducing additional mapper dependencies.
-    // This keeps the migration simple and explicit.
-    // Arquivo entity = new Arquivo();
-    private Arquivo toEntity(ArquivoDto dto) {
-        if (dto == null) {
-            return null;
-        }
-        Arquivo entity = new Arquivo();
-
-        // Preserve id if provided (useful for upserts or tests)
-        try {
-            // Some DTOs may not have id; guard with reflection not necessary here as we assume typical DTO fields.
-            entity.setId(dto.getId());
-        } catch (Exception ex) {
-            // ignore missing id setter/getter in DTO - defensive approach
-        }
-
-        // IMPORTANT: Use setNomeArquivo (camelCase) as per new entity API.
-        entity.setNomeArquivo(dto.getNomeArquivo());
-
-        // TODO: (REVIEW) If the DTO contains more fields, map them here explicitly.
-        // Arquivo entity2 = new Arquivo();
-
-        return entity;
-    }
-
+    /**
+     * Maps Arquivo entity to ArquivoDto.
+     *
+     * @param entity the Arquivo entity
+     * @return mapped ArquivoDto
+     */
     private ArquivoDto toDto(Arquivo entity) {
         if (entity == null) {
             return null;
         }
         ArquivoDto dto = new ArquivoDto();
-        try {
-            dto.setId(entity.getId());
-        } catch (Exception ex) {
-            // ignore if DTO doesn't expose id
-        }
+        dto.setId(entity.getId());
+        // Simple mapping for nomeArquivo field
         dto.setNomeArquivo(entity.getNomeArquivo());
-        // TODO: (REVIEW) Map additional entity fields to DTO here as needed.
-        // Arquivo entity3 = new Arquivo();
+        // Map other fields if present (keep simple to meet requirements)
         return dto;
+    }
+
+    /**
+     * Maps ArquivoDto to Arquivo entity.
+     *
+     * @param dto the DTO to map
+     * @return mapped Arquivo entity
+     */
+    private Arquivo toEntity(ArquivoDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        Arquivo entity = new Arquivo();
+        // NOTE: We intentionally do not set the id here for create operations.
+        // Map nomeArquivo using the proper setter method.
+        // TODO: (REVIEW) Using setNomeArquivo to replace legacy setNomearquivo call during mapping
+        // entity.setNomearquivo(dto.getNomeArquivo());
+        entity.setNomeArquivo(safeTrim(dto.getNomeArquivo()));
+        return entity;
+    }
+
+    /**
+     * Validates the nomeArquivo field on the provided DTO.
+     *
+     * @param dto the DTO to validate
+     */
+    private void validateNomeArquivo(ArquivoDto dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("ArquivoDto must not be null");
+        }
+        String nome = dto.getNomeArquivo();
+        if (nome == null || nome.trim().isEmpty()) {
+            throw new IllegalArgumentException("nomeArquivo must not be null or blank");
+        }
+        // Basic length validation to protect database constraints (common default)
+        if (nome.trim().length() > 255) {
+            throw new IllegalArgumentException("nomeArquivo must not exceed 255 characters");
+        }
+    }
+
+    /**
+     * Helper to safely trim strings and guard against nulls.
+     *
+     * @param value input value
+     * @return trimmed string or null if input was null
+     */
+    private String safeTrim(String value) {
+        return value == null ? null : value.trim();
     }
 }

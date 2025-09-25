@@ -1,51 +1,57 @@
 package br.com.meta3.java.scaffold.api.dtos;
 
-import java.io.Serializable;
-
-import jakarta.validation.constraints.NotNull;
+import br.com.meta3.java.scaffold.domain.entities.Arquivo;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
 
 /**
- * DTO for Arquivo used in API layer.
- * Keeps the legacy field name 'codigoarquivo' to preserve API compatibility with existing clients.
+ * DTO for Arquivo used by API layer.
+ * Provides validation and mapping helpers to/from domain entity.
  */
-public class ArquivoDto implements Serializable {
+public class ArquivoDto {
 
-    private static final long serialVersionUID = 1L;
-
-    // TODO: (REVIEW) Choosing Integer instead of primitive int for the DTO field to allow nullable values
-    // This allows incoming requests to omit the field (null) when appropriate while still keeping compatibility.
-    // The legacy setter with primitive int is preserved below as an overload to maintain binary/backwards compatibility.
-    @NotNull
-    private Integer codigoarquivo;
+    // TODO: (REVIEW) Map JSON 'nomearquivo' to DTO property 'nomeArquivo' for backward compatibility
+    @JsonProperty("nomearquivo")
+    @NotBlank(message = "nomeArquivo must not be blank")
+    private String nomeArquivo;
 
     public ArquivoDto() {
     }
 
-    public ArquivoDto(Integer codigoarquivo) {
-        this.codigoarquivo = codigoarquivo;
+    public ArquivoDto(String nomeArquivo) {
+        this.nomeArquivo = nomeArquivo;
+    }
+
+    public String getNomeArquivo() {
+        return nomeArquivo;
+    }
+
+    public void setNomeArquivo(String nomeArquivo) {
+        this.nomeArquivo = nomeArquivo;
     }
 
     /**
-     * Getter for codigoarquivo to mirror the domain entity naming and preserve API contract.
+     * Map this DTO to the domain entity.
+     * Note: the domain entity still uses the legacy-named setter 'setNomearquivo'.
      */
-    public Integer getCodigoarquivo() {
-        return codigoarquivo;
+    public Arquivo toEntity() {
+        Arquivo a = new Arquivo();
+        // TODO: (REVIEW) Using legacy setter 'setNomearquivo' on Arquivo entity to keep compatibility
+        a.setNomearquivo(this.nomeArquivo);
+        return a;
     }
 
     /**
-     * Setter using Integer to support typical JSON deserialization and nullability.
+     * Create a DTO from the domain entity.
+     * Note: the domain entity may expose legacy-named getter 'getNomearquivo'.
      */
-    public void setCodigoarquivo(Integer codigoarquivo) {
-        this.codigoarquivo = codigoarquivo;
+    public static ArquivoDto fromEntity(Arquivo arquivo) {
+        if (arquivo == null) {
+            return null;
+        }
+        ArquivoDto dto = new ArquivoDto();
+        // TODO: (REVIEW) Mapping from entity's legacy getter 'getNomearquivo' to DTO 'nomeArquivo'
+        dto.setNomeArquivo(arquivo.getNomearquivo());
+        return dto;
     }
-
-    // TODO: (REVIEW) Preserving legacy primitive setter signature to match legacy code usage
-    // The original legacy code provided: public void setCodigoarquivo(int codigoarquivo){ this.codigoarquivo = codigoarquivo; }
-    // Keep this overload so existing code that calls the primitive-typed setter will continue to work unchanged.
-    public void setCodigoarquivo(int codigoarquivo) {
-        this.codigoarquivo = codigoarquivo;
-    }
-
-    // TODO: (REVIEW) Keeping field name exactly as in the domain entity ('codigoarquivo') to ensure mapping consistency
-    // This decision avoids mapping surprises and keeps DTO <-> Entity conversion straightforward.
 }

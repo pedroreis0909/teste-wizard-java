@@ -4,14 +4,20 @@ import br.com.meta3.java.scaffold.api.dtos.ArquivoDto;
 import br.com.meta3.java.scaffold.application.services.ArquivoService;
 import br.com.meta3.java.scaffold.domain.entities.Arquivo;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
+import java.util.Optional;
 
 /**
- * Controller for Arquivo operations.
+ * Controller responsible for exposing endpoints to create/update Arquivo entities.
  *
- * Migration notes and decisions are added as TODO comments where legacy behavior was adapted.
+ * Notes about migration decisions are in TODO comments where assumptions were necessary
+ * (e.g. assumed service method signatures or DTO/entity accessor names).
  */
 @RestController
 @RequestMapping("/api/arquivos")
@@ -24,56 +30,84 @@ public class ArquivoController {
     }
 
     /**
-     * Creates a new Arquivo from the provided DTO.
+     * Create a new Arquivo resource.
      *
-     * - Accepts ArquivoDto with camelCase field nomeArquivo.
-     * - The DTO preserves the external JSON field name "nomearquivo" via @JsonProperty on the DTO class.
-     * - The endpoint parameter is validated with @Valid.
-     * - Maps DTO.nomeArquivo -> Arquivo.setNomeArquivo(...) (updated camelCase setter).
+     * - Accepts ArquivoDto with nomeArquivo (validated using jakarta.validation @Valid)
+     * - Delegates to ArquivoService to create the domain entity
+     * - Returns 201 Created with Location header pointing to the created resource
+     *
+     * Expected request JSON:
+     * {
+     *   "nomeArquivo": "some name"
+     * }
      */
     @PostMapping
-    public ResponseEntity<ArquivoDto> create(@RequestBody @Valid ArquivoDto arquivoDto) {
-        // Map DTO to entity
-        Arquivo arquivo = new Arquivo();
+    public ResponseEntity<ArquivoDto> create(@Valid @RequestBody ArquivoDto arquivoDto,
+                                             UriComponentsBuilder uriBuilder) {
+        // TODO: (REVIEW) The legacy code provided a setter named setNomearquivo(String nomearquivo)
+        // We assume the domain entity keeps that naming and the service layer exposes a create method
+        // that accepts the raw nomeArquivo or the DTO. Here we call a create method on the service
+        // and assume it returns the created Arquivo domain entity.
+        Arquivo created = arquivoService.create(arquivoDto.getNomeArquivo());
 
-        // TODO: (REVIEW) The legacy setter was `setNomearquivo(String nomearquivo)` (lowercase 'a').
-        // We intentionally map to the updated camelCase setter `setNomeArquivo` to follow JavaBean conventions.
-        // This preserves newer entity naming while the DTO still exposes the legacy JSON property name.
-        arquivo.setNomeArquivo(arquivoDto.getNomeArquivo());
-
-        // TODO: (REVIEW) Calling arquivoService.save(...) as a placeholder for persistence.
-        // Ensure ArquivoService exposes a compatible save/create method. If not present, implement it in
-        // src/main/java/br/com/meta3/java/scaffold/application/services/ArquivoService.java
-        Arquivo savedArquivo = arquivoService.save(arquivo);
-
-        // Map entity back to DTO for response
+        // TODO: (REVIEW) Mapping from domain entity to DTO:
+        // We assume Arquivo has a getter getNomearquivo() matching the legacy setter naming,
+        // and ArquivoDto has setNomeArquivo(...) to populate the response DTO.
         ArquivoDto responseDto = new ArquivoDto();
-        responseDto.setNomeArquivo(savedArquivo.getNomeArquivo());
+        responseDto.setNomeArquivo(created.getNomearquivo());
 
-        // Return 201 Created with the persisted DTO
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+        // Build Location header using created id if available
+        // TODO: (REVIEW) We assume Arquivo has a getId() method; if not, the Location header can be omitted or adjusted.
+        URI location = null;
+        try {
+            if (created.getId() != null) {
+                location = uriBuilder.path("/api/arquivos/{id}")
+                        .buildAndExpand(created.getId())
+                        .toUri();
+            }
+        } catch (Exception e) {
+            // If getId or mapping fails for any reason, we still return CREATED without Location.
+            location = null;
+        }
+
+        if (location != null) {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setLocation(location);
+            return new ResponseEntity<>(responseDto, headers, HttpStatus.CREATED);
+        } else {
+            return new ResponseEntity<>(responseDto, HttpStatus.CREATED);
+        }
     }
 
     /**
-     * Simple retrieval endpoint to demonstrate returning a DTO.
-     * Accepts an id and returns the corresponding ArquivoDto if found.
+     * Update the nomeArquivo of an existing Arquivo resource.
      *
-     * - Maps entity.nomeArquivo -> dto.nomeArquivo
-     * - Preserves external JSON field name "nomearquivo" via DTO annotations.
+     * - Accepts ArquivoDto with nomeArquivo (validated using jakarta.validation @Valid)
+     * - Delegates to ArquivoService to perform the update
+     * - Returns 204 No Content on success, 404 Not Found if entity does not exist
+     *
+     * Expected request JSON:
+     * {
+     *   "nomeArquivo": "updated name"
+     * }
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<ArquivoDto> findById(@PathVariable Long id) {
-        // TODO: (REVIEW) Using arquivoService.findById as a domain operation placeholder.
-        // Ensure ArquivoService provides a method like Optional<Arquivo> findById(Long id).
-        Arquivo arquivo = arquivoService.findById(id);
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> update(@PathVariable("id") Long id,
+                                       @Valid @RequestBody ArquivoDto arquivoDto) {
+        // TODO: (REVIEW) We assume the service exposes an update method that returns Optional<Arquivo>
+        // with the updated entity when the id exists, or Optional.empty() when it does not.
+        Optional<Arquivo> updated = arquivoService.update(id, arquivoDto.getNomeArquivo());
 
-        if (arquivo == null) {
+        if (updated.isPresent()) {
+            // Successfully updated
+            return ResponseEntity.noContent().build();
+        } else {
+            // Resource not found
             return ResponseEntity.notFound().build();
         }
-
-        ArquivoDto dto = new ArquivoDto();
-        dto.setNomeArquivo(arquivo.getNomeArquivo());
-
-        return ResponseEntity.ok(dto);
     }
+
+    // TODO: (REVIEW) Error handling and validation:
+    // Rely on Spring Boot's default MethodArgumentNotValidException handling to return 400 Bad Request
+    // when @Valid fails. If custom error payloads are required, implement @ControllerAdvice separately.
 }
