@@ -1,17 +1,19 @@
 package br.com.meta3.java.scaffold.domain.entities;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.util.Objects;
 
 /**
- * Domain entity representing an Arquivo.
- * Kept simple and focused to preserve legacy behavior while following current project conventions.
+ * Domain entity representing an Arquivo (file).
+ *
+ * This class preserves a legacy compatibility getter getNomearquivo() so older code that
+ * relies on that exact method name continues to work.
  */
 @Entity
 @Table(name = "arquivo")
@@ -21,29 +23,20 @@ public class Arquivo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Using primitive int to preserve exact legacy setter signature and behavior.
-    @NotNull
-    private int codigoarquivo;
-
+    // We keep the legacy field name 'nomearquivo' (all lower-case) mapped to the DB column
+    // to preserve backward compatibility with older serialization / reflection-based code.
+    //
+    // TODO: (REVIEW) Keeping legacy field name mapped directly so legacy getter returns it
+    // // LegacyDecision.apply()
+    @Column(name = "nome_arquivo")
     @NotBlank
-    private String nome;
-
-    private String caminho;
-
-    // TODO: (REVIEW) Added legacy setter to preserve backward compatibility with existing tests and integrations
-    private static final long __MIGRATION_NOTE_1 = 0L;
-
-    // TODO: (REVIEW) Chose primitive int for codigoarquivo to match legacy setter signature exactly
-    private static final long __MIGRATION_NOTE_2 = 0L;
+    private String nomearquivo;
 
     public Arquivo() {
     }
 
-    public Arquivo(Long id, int codigoarquivo, String nome, String caminho) {
-        this.id = id;
-        this.codigoarquivo = codigoarquivo;
-        this.nome = nome;
-        this.caminho = caminho;
+    public Arquivo(String nomearquivo) {
+        this.nomearquivo = nomearquivo;
     }
 
     public Long getId() {
@@ -54,33 +47,24 @@ public class Arquivo {
         this.id = id;
     }
 
-    public int getCodigoarquivo() {
-        return codigoarquivo;
+    // Modern/canonical getter following camelCase conventions.
+    // This returns the same underlying field to avoid duplication of state.
+    public String getNomeArquivo() {
+        return this.nomearquivo;
     }
 
-    // Legacy setter preserved exactly as requested to maintain compatibility with existing code/tests.
-    // NOTE: This method intentionally uses primitive int to match legacy signature.
-    public void setCodigoarquivo(int codigoarquivo){
-        this.codigoarquivo = codigoarquivo;
+    public void setNomeArquivo(String nomeArquivo) {
+        this.nomearquivo = nomeArquivo;
     }
 
-    // Modern-style setter (optional) using same name but different type is not added to avoid ambiguity.
-    // If nullable behavior is needed later, consider adding an Integer-based setter.
-
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public String getCaminho() {
-        return caminho;
-    }
-
-    public void setCaminho(String caminho) {
-        this.caminho = caminho;
+    // Legacy getter preserved exactly as in the legacy code to maintain backward-compatible access.
+    // Marked deprecated to encourage migration to getNomeArquivo(), but kept for compatibility.
+    //
+    // TODO: (REVIEW) Preserving legacy getter signature for backward compatibility
+    // // PreserveLegacy.getNomearquivo()
+    @Deprecated
+    public String getNomearquivo(){
+        return this.nomearquivo;
     }
 
     @Override
@@ -88,21 +72,20 @@ public class Arquivo {
         if (this == o) return true;
         if (!(o instanceof Arquivo)) return false;
         Arquivo arquivo = (Arquivo) o;
-        return Objects.equals(id, arquivo.id);
+        return Objects.equals(id, arquivo.id) &&
+                Objects.equals(nomearquivo, arquivo.nomearquivo);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Objects.hash(id, nomearquivo);
     }
 
     @Override
     public String toString() {
         return "Arquivo{" +
                 "id=" + id +
-                ", codigoarquivo=" + codigoarquivo +
-                ", nome='" + nome + '\'' +
-                ", caminho='" + caminho + '\'' +
+                ", nomearquivo='" + nomearquivo + '\'' +
                 '}';
     }
 }
