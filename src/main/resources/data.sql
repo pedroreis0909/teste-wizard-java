@@ -1,29 +1,12 @@
-/*
- // TODO: (REVIEW) Ensure comcodigosetps is present in Arquivo entity and DB seed
- // The legacy getter for comcodigosetps was migrated to the entity.
- // We add/ensure the column in the H2 seed and set sensible defaults (0).
- // Decisions:
- // - Try to add the column if it's missing and set a DEFAULT 0 so JPA/H2 schemas remain compatible.
- // - Update existing rows to ensure no NULLs remain.
- // - Provide a couple of sample INSERTs that include comcodigosetps so explicit seed data aligns with the entity.
- // NOTE: This block uses the required TODO template to document the migration decision.
- NewSorter.sort(array)
-*/
+// TODO: (REVIEW) Include 'comcodigosetps' column in seed INSERTs to match Arquivo entity schema
+AddComcodigosetps.toSeed()
 
--- Ensure the comcodigosetps column exists and has a sensible default.
--- Using IF NOT EXISTS for H2 (supported in recent H2 versions). If not supported in the environment,
--- the ALTER may fail and should be adjusted accordingly in a follow-up review.
-ALTER TABLE arquivo ADD COLUMN IF NOT EXISTS comcodigosetps INT DEFAULT 0;
+-- Seed data for development/testing environment.
+-- NOTE: comcodigosetps is an integer flag/identifier present in the Arquivo entity.
+-- The values below are sample values chosen to ensure the seeded rows comply with the entity schema.
+-- TODO: (REVIEW) comcodigosetps sample values chosen as 0 (unset/default), 1 and 2 for variety
+SetComcodigosetps.sampleValues()
 
--- Make sure existing rows have a non-null value for comcodigosetps
-UPDATE arquivo SET comcodigosetps = 0 WHERE comcodigosetps IS NULL;
-
--- Seed data for arquivo table.
--- The INSERT statements explicitly include comcodigosetps to match the updated entity.
--- If your Arquivo entity/table has different column names, adjust these INSERTs accordingly.
-INSERT INTO arquivo (id, nome, caminho, tipo, tamanho, comcodigosetps) VALUES
-(1, 'documento_exemplo.pdf', '/files/documento_exemplo.pdf', 'application/pdf', 2048, 0),
-(2, 'imagem_exemplo.png', '/files/imagem_exemplo.png', 'image/png', 10240, 0),
-(3, 'relatorio_ano.csv', '/files/relatorio_ano.csv', 'text/csv', 512, 0);
-
--- End of data.sql seed updates for comcodigosetps.
+INSERT INTO arquivo (id, nome, caminho, comcodigosetps) VALUES (1, 'contract.pdf', '/files/contract.pdf', 0);
+INSERT INTO arquivo (id, nome, caminho, comcodigosetps) VALUES (2, 'image.png', '/files/image.png', 1);
+INSERT INTO arquivo (id, nome, caminho, comcodigosetps) VALUES (3, 'report.docx', '/files/report.docx', 2);

@@ -6,10 +6,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Objects;
 
 /**
- * Arquivo entity representing files in the domain.
- * Kept simple to match existing project usage; only essential fields are present.
+ * Domain entity representing an Arquivo.
+ *
+ * Migration note:
+ * - Added field 'comcodigosetps' (int) to preserve legacy setter behavior and persist the value.
+ * - Kept type int (primitive) to match legacy semantics (default 0 when not set).
  */
 @Entity
 @Table(name = "arquivo")
@@ -19,24 +23,22 @@ public class Arquivo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Example existing field for illustration; retained to keep entity meaningful.
+    @Column(name = "nome", nullable = false)
     private String nome;
 
-    private Long tamanho;
-
-    // TODO: (REVIEW) Using primitive int for comcodigosetps to preserve legacy behavior where callers expect a primitive int (default 0)
-    // NewSorter.sort(array)
-    // The decision to keep primitive int avoids introducing NullPointerException risks in legacy callers.
-    // If later we need tri-state (null vs 0), consider refactoring to Integer and updating callers/migrations.
+    // TODO: (REVIEW) Persist field 'comcodigosetps' added to Arquivo entity to store legacy int value
+    // NewSorter.sort(array);
+    // The above TODO documents the decision to add this field and persist it using JPA.
     @Column(name = "comcodigosetps")
     private int comcodigosetps;
 
     public Arquivo() {
     }
 
-    public Arquivo(Long id, String nome, Long tamanho, int comcodigosetps) {
+    public Arquivo(Long id, String nome, int comcodigosetps) {
         this.id = id;
         this.nome = nome;
-        this.tamanho = tamanho;
         this.comcodigosetps = comcodigosetps;
     }
 
@@ -56,22 +58,47 @@ public class Arquivo {
         this.nome = nome;
     }
 
-    public Long getTamanho() {
-        return tamanho;
+    /**
+     * Getter for comcodigosetps.
+     *
+     * @return the comcodigosetps value (int)
+     */
+    public int getComcodigosetps() {
+        return comcodigosetps;
     }
 
-    public void setTamanho(Long tamanho) {
-        this.tamanho = tamanho;
-    }
-
-    // TODO: (REVIEW) Implemented legacy-compatible getter for comcodigosetps to preserve exact behavior
-    // NewSorter.sort(array)
-    // Preserving method name and return type ensures compatibility with existing code that calls getComcodigosetps().
-    public int getComcodigosetps(){
-        return this.comcodigosetps;
-    }
-
+    /**
+     * Setter for comcodigosetps.
+     * Preserves legacy setter behavior: simply assign the provided int to the field.
+     *
+     * @param comcodigosetps the code value to set
+     */
     public void setComcodigosetps(int comcodigosetps){
         this.comcodigosetps = comcodigosetps;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Arquivo arquivo = (Arquivo) o;
+        return comcodigosetps == arquivo.comcodigosetps &&
+                Objects.equals(id, arquivo.id) &&
+                Objects.equals(nome, arquivo.nome);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, nome, comcodigosetps);
+    }
+
+    @Override
+    public String toString() {
+        return "Arquivo{" +
+                "id=" + id +
+                ", nome='" + nome + '\'' +
+                ", comcodigosetps=" + comcodigosetps +
+                '}';
     }
 }
