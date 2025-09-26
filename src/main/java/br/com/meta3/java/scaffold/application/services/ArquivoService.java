@@ -3,16 +3,23 @@ package br.com.meta3.java.scaffold.application.services;
 import br.com.meta3.java.scaffold.api.dtos.ArquivoDto;
 import br.com.meta3.java.scaffold.domain.entities.Arquivo;
 import br.com.meta3.java.scaffold.domain.repositories.ArquivoRepository;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
- * Service responsible for application-level operations on Arquivo entities.
- * Focus: ensure ArquivoDto.getQuantidadeRegistro() is correctly mapped to Arquivo.setQuantidadeRegistro(...)
- * with appropriate null checks and validations.
+ * Service responsible for application business logic around Arquivo.
+ * This service maps between Arquivo (entity) and ArquivoDto (API layer).
+ *
+ * Migration note:
+ * We ensure the 'aptos' field is explicitly preserved across boundaries (DTO <-> Entity)
+ * as requested by the migration task.
  */
 @Service
 @Transactional
@@ -20,88 +27,80 @@ public class ArquivoService {
 
     private final ArquivoRepository arquivoRepository;
 
+    @Autowired
     public ArquivoService(ArquivoRepository arquivoRepository) {
         this.arquivoRepository = arquivoRepository;
     }
 
-    /**
-     * Creates a new Arquivo from the provided DTO and persists it.
-     *
-     * Business rules applied:
-     * - If quantidadeRegistro in DTO is null, default to 0 (assumption for new entities).
-     * - quantidadeRegistro must be non-negative, otherwise an IllegalArgumentException is thrown.
-     */
-    public Arquivo create(ArquivoDto dto) {
-        Arquivo arquivo = new Arquivo();
+    public ArquivoDto create(ArquivoDto dto) {
+        Objects.requireNonNull(dto, "ArquivoDto must not be null");
 
-        // TODO: (REVIEW) Decide default for new entity when DTO.quantidadeRegistro is null.
-        // We default to 0 for new Arquivo because there is no existing persisted value to preserve.
-        Integer qtd = dto.getQuantidadeRegistro();
-        if (qtd == null) {
-            arquivo.setQuantidadeRegistro(0);
-        } else {
-            // TODO: (REVIEW) Validate business rule: quantidadeRegistro must be non-negative.
-            if (qtd < 0) {
-                throw new IllegalArgumentException("quantidadeRegistro must be non-negative");
-            }
-            arquivo.setQuantidadeRegistro(qtd);
-        }
-
-        // Map other fields here if necessary in the future.
-        return arquivoRepository.save(arquivo);
+        Arquivo entity = toEntity(dto);
+        Arquivo saved = arquivoRepository.save(entity);
+        return toDto(saved);
     }
 
-    /**
-     * Updates an existing Arquivo identified by id using values from the DTO.
-     *
-     * Business rules applied:
-     * - If quantidadeRegistro in DTO is null, preserve the existing entity's quantidadeRegistro.
-     * - If provided, quantidadeRegistro must be non-negative.
-     */
-    public Arquivo update(Long id, ArquivoDto dto) {
-        Optional<Arquivo> opt = arquivoRepository.findById(id);
-        Arquivo arquivo = opt.orElseThrow(() -> new IllegalArgumentException("Arquivo not found for id: " + id));
-
-        Integer qtd = dto.getQuantidadeRegistro();
-
-        // TODO: (REVIEW) Decide update behavior when DTO.quantidadeRegistro is null.
-        // We preserve the existing value to avoid unintentionally resetting it during partial updates.
-        if (qtd != null) {
-            // TODO: (REVIEW) Validate business rule: quantidadeRegistro must be non-negative.
-            if (qtd < 0) {
-                throw new IllegalArgumentException("quantidadeRegistro must be non-negative");
-            }
-            arquivo.setQuantidadeRegistro(qtd);
-        }
-
-        // Map other updatable fields from DTO to entity when needed.
-
-        return arquivoRepository.save(arquivo);
-    }
-
-    /**
-     * Retrieves an Arquivo by id.
-     */
     @Transactional(readOnly = true)
-    public Optional<Arquivo> findById(Long id) {
-        return arquivoRepository.findById(id);
+    public Optional<ArquivoDto> findById(Long id) {
+        return arquivoRepository.findById(id).map(this::toDto);
     }
 
-    /**
-     * Retrieves all Arquivo entities.
-     */
     @Transactional(readOnly = true)
-    public List<Arquivo> findAll() {
-        return arquivoRepository.findAll();
+    public List<ArquivoDto> findAll() {
+        return arquivoRepository.findAll()
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
-    /**
-     * Deletes an Arquivo by id.
-     */
+    public Optional<ArquivoDto> update(Long id, ArquivoDto dto) {
+        Objects.requireNonNull(dto, "ArquivoDto must not be null");
+        return arquivoRepository.findById(id).map(existing -> {
+            // copy common properties from DTO to entity
+            BeanUtils.copyProperties(dto, existing, "id");
+            // TODO: (REVIEW) Ensure aptos is preserved when updating from DTO to entity
+            existing.setAptos(dto.getAptos());
+            Arquivo updated = arquivoRepository.save(existing);
+            return toDto(updated);
+        });
+    }
+
     public void delete(Long id) {
-        if (!arquivoRepository.existsById(id)) {
-            throw new IllegalArgumentException("Arquivo not found for id: " + id);
-        }
         arquivoRepository.deleteById(id);
+    }
+
+    // --------------------------
+    // Mapping helpers
+    // --------------------------
+
+    private Arquivo toEntity(ArquivoDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        Arquivo entity = new Arquivo();
+
+        // Use BeanUtils to copy standard properties where names match.
+        // This helps avoid re-implementing field-by-field copying and keeps the mapping resilient to added fields.
+        BeanUtils.copyProperties(dto, entity);
+
+        // TODO: (REVIEW) Explicitly set aptos on the entity to guarantee the new field is preserved during create flows
+        entity.setAptos(dto.getAptos());
+
+        return entity;
+    }
+
+    private ArquivoDto toDto(Arquivo entity) {
+        if (entity == null) {
+            return null;
+        }
+        ArquivoDto dto = new ArquivoDto();
+
+        // Copy common properties first
+        BeanUtils.copyProperties(entity, dto);
+
+        // TODO: (REVIEW) Explicitly set aptos on the DTO to guarantee the new field is exposed in API responses
+        dto.setAptos(entity.getAptos());
+
+        return dto;
     }
 }

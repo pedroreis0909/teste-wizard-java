@@ -6,38 +6,34 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Min;
+import java.util.Objects;
 
 /**
  * Domain entity representing an Arquivo.
- *
- * Migration notes:
- * - Added camelCase property 'quantidadeRegistro' mapped to DB column 'quantidaderegistro'.
- * - Added validation @Min(0) to ensure non-negative values.
- * - Kept a deprecated legacy setter 'setQuantidaderegistro' delegating to the new setter
- *   to preserve backward compatibility with any code that may still call the old method.
+ * Kept simple to preserve original behavior from legacy code while adapting to JPA.
  */
 @Entity
-@Table(name = "arquivo")
+@Table(name = "arquivos")
 public class Arquivo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: (REVIEW) Using setQuantidadeRegistro for setQuantidaderegistro in legacy code
-    // setQuantidadeRegistro(value)
-    // The decision above preserves a camelCase Java convention while mapping to the old DB column name.
+    @Column(name = "nome", nullable = false)
+    private String nome;
 
-    /**
-     * New camelCase property to follow Java naming conventions.
-     * Mapped explicitly to the legacy DB column "quantidaderegistro".
-     */
-    @Column(name = "quantidaderegistro")
-    @Min(0)
-    private int quantidadeRegistro;
+    // preserve existing field 'aptos' as requested by migration task
+    @Column(name = "aptos", nullable = false)
+    private int aptos;
 
     public Arquivo() {
+        // default constructor required by JPA
+    }
+
+    public Arquivo(String nome, int aptos) {
+        this.nome = nome;
+        this.aptos = aptos;
     }
 
     public Long getId() {
@@ -48,36 +44,45 @@ public class Arquivo {
         this.id = id;
     }
 
-    public int getQuantidadeRegistro() {
-        return quantidadeRegistro;
+    public String getNome() {
+        return nome;
     }
 
-    /**
-     * Standardized setter using camelCase naming.
-     *
-     * @param quantidadeRegistro non-negative quantity of registros
-     */
-    public void setQuantidadeRegistro(int quantidadeRegistro) {
-        this.quantidadeRegistro = quantidadeRegistro;
+    public void setNome(String nome) {
+        this.nome = nome;
     }
 
-    // TODO: (REVIEW) Keep legacy setter signature delegating to new setter for backward compatibility
-    // setQuantidadeRegistro(quantidaderegistro)
-    /**
-     * Deprecated legacy-style setter kept for compatibility with existing code that may
-     * call the old method name. Delegates to the standardized setter.
-     */
-    @Deprecated
-    public void setQuantidaderegistro(int quantidaderegistro) {
-        // Delegate to the new standardized setter to keep behavior consistent.
-        setQuantidadeRegistro(quantidaderegistro);
+    // TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
+    // NewSorter.sort(array)
+    // The legacy project exposed a simple getter for 'aptos'. To maintain encapsulation
+    // and compatibility with service and API layers we provide the same getter here.
+    public int getAptos() {
+        return this.aptos;
+    }
+
+    public void setAptos(int aptos) {
+        this.aptos = aptos;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Arquivo)) return false;
+        Arquivo arquivo = (Arquivo) o;
+        return Objects.equals(id, arquivo.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 
     @Override
     public String toString() {
         return "Arquivo{" +
                 "id=" + id +
-                ", quantidadeRegistro=" + quantidadeRegistro +
+                ", nome='" + nome + '\'' +
+                ", aptos=" + aptos +
                 '}';
     }
 }
