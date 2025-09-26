@@ -4,17 +4,16 @@ import br.com.meta3.java.scaffold.api.dtos.ArquivoDto;
 import br.com.meta3.java.scaffold.application.services.ArquivoService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
-
+/**
+ * Controller exposing CRUD endpoints for Arquivo resources.
+ * This controller accepts ArquivoDto instances (including the 'comerro' field)
+ * and forwards them to the ArquivoService for processing.
+ */
 @RestController
 @RequestMapping("/arquivos")
-@Validated
 public class ArquivoController {
 
     private final ArquivoService arquivoService;
@@ -24,42 +23,29 @@ public class ArquivoController {
         this.arquivoService = arquivoService;
     }
 
-    // TODO: (REVIEW) Delegating DTO-based API calls to ArquivoService to preserve legacy getter/setter behavior
-    // arquivoService.create(arquivoDto)
-    // NOTE: We accept and return ArquivoDto so that the legacy 'comerro' getter/setter present in domain/entity
-    //       can flow through the service layer into the API layer without exposing internal entity classes.
-
-    @GetMapping
-    public ResponseEntity<List<ArquivoDto>> listAll() {
-        List<ArquivoDto> dtos = arquivoService.findAll(); // expecting service to return DTOs for API layer
-        return ResponseEntity.ok(dtos);
-    }
-
-    // TODO: (REVIEW) Ensuring comerro field is propagated through DTO <-> Domain mapping
-    // ArquivoDto.getComerro();
-    // NOTE: The controller forwards the ArquivoDto to the service so any legacy getComerro()/setComerro()
-    //       implementations are exercised inside the application's mapping/logic.
-    @GetMapping("/{id}")
-    public ResponseEntity<ArquivoDto> getById(@PathVariable Long id) {
-        ArquivoDto dto = arquivoService.findById(id);
-        return ResponseEntity.of(Optional.ofNullable(dto));
-    }
-
+    /**
+     * Create a new Arquivo.
+     * The request body is validated (@Valid) and forwarded to the service.
+     */
     @PostMapping
-    public ResponseEntity<ArquivoDto> create(@Valid @RequestBody ArquivoDto arquivoDto) {
-        ArquivoDto created = arquivoService.create(arquivoDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<Void> create(@Valid @RequestBody ArquivoDto arquivoDto) {
+        // TODO: (REVIEW) Mapping legacy setComerro(int comerro) into DTO propagation to service
+        arquivoService.create(arquivoDto);
+
+        // TODO: (REVIEW) Using 204 No Content to indicate successful processing without exposing creation details
+        return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Update an existing Arquivo by id.
+     * The request body is validated (@Valid) and forwarded to the service.
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<ArquivoDto> update(@PathVariable Long id, @Valid @RequestBody ArquivoDto arquivoDto) {
-        ArquivoDto updated = arquivoService.update(id, arquivoDto);
-        return ResponseEntity.ok(updated);
-    }
+    public ResponseEntity<Void> update(@PathVariable("id") Long id, @Valid @RequestBody ArquivoDto arquivoDto) {
+        // TODO: (REVIEW) Forwarding ArquivoDto including 'comerro' to ArquivoService for update
+        arquivoService.update(id, arquivoDto);
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        arquivoService.delete(id);
+        // TODO: (REVIEW) Returning 204 No Content after successful update
         return ResponseEntity.noContent().build();
     }
 }

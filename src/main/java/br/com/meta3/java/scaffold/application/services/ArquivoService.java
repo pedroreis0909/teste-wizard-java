@@ -1,107 +1,106 @@
 package br.com.meta3.java.scaffold.application.services;
 
-import java.util.Optional;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import br.com.meta3.java.scaffold.api.dtos.ArquivoDto;
 import br.com.meta3.java.scaffold.domain.entities.Arquivo;
 import br.com.meta3.java.scaffold.domain.repositories.ArquivoRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.Objects;
+
+/**
+ * Service responsible for application layer operations for Arquivo entities.
+ * Handles mapping from ArquivoDto to Arquivo and performs basic validation.
+ */
 @Service
-@Transactional
 public class ArquivoService {
 
     private final ArquivoRepository arquivoRepository;
 
-    @Autowired
     public ArquivoService(ArquivoRepository arquivoRepository) {
         this.arquivoRepository = arquivoRepository;
     }
 
     /**
-     * Creates a new Arquivo from the provided DTO.
-     * Ensures comerro from DTO is propagated to entity before saving.
+     * Creates a new Arquivo from the given DTO.
+     *
+     * @param dto the Arquivo DTO
+     * @return the saved Arquivo entity
      */
-    public ArquivoDto create(ArquivoDto dto) {
-        Arquivo entity = toEntity(dto);
+    @Transactional
+    public Arquivo create(ArquivoDto dto) {
+        Objects.requireNonNull(dto, "ArquivoDto must not be null");
 
-        // TODO: (REVIEW) Mapping comerro field preserving legacy getter getComerro
-        entity.setComerro(dto.getComerro());
-        Arquivo saved = arquivoRepository.save(entity);
-
-        return toDto(saved);
-    }
-
-    /**
-     * Updates an existing Arquivo with values from the provided DTO.
-     * Ensures comerro from DTO overwrites entity's comerro (preserve legacy behavior).
-     */
-    public ArquivoDto update(Long id, ArquivoDto dto) {
-        Optional<Arquivo> optional = arquivoRepository.findById(id);
-        Arquivo entity = optional.orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
-
-        // Map other updatable fields if present in DTO.
-        // NOTE: Keep mapping simple; only fields known to exist should be mapped here.
-        if (dto.getNome() != null) {
-            entity.setNome(dto.getNome());
-        }
-
-        // TODO: (REVIEW) Mapping comerro on update to preserve legacy behavior
-        entity.setComerro(dto.getComerro());
-
-        Arquivo saved = arquivoRepository.save(entity);
-        return toDto(saved);
-    }
-
-    /**
-     * Finds an Arquivo by id and returns a populated DTO.
-     * Ensures DTO.comerro is populated from entity.getComerro() (legacy getter semantics).
-     */
-    @Transactional(readOnly = true)
-    public ArquivoDto findById(Long id) {
-        Arquivo entity = arquivoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
-
-        // TODO: (REVIEW) Populating DTO comerro value using legacy getComerro
-        return toDto(entity);
-    }
-
-    // -----------------
-    // Mapping helpers
-    // -----------------
-
-    private Arquivo toEntity(ArquivoDto dto) {
         Arquivo entity = new Arquivo();
 
-        // Id may be null for creation flows
-        if (dto.getId() != null) {
-            entity.setId(dto.getId());
+        // Map fields from DTO to entity
+        // TODO: (REVIEW) Basic mapping for other fields should be expanded as DTO evolves.
+        // Example: entity.setNome(dto.getNome());
+
+        // Map comerro with null-safety and basic validation
+        // Legacy code: public void setComerro(int comerro){ this.comerro = comerro; }
+        // We must accept nullable input from DTO (Integer) and validate before assigning.
+        if (dto.getComerro() != null) {
+            Integer comerro = dto.getComerro();
+            validateComerro(comerro);
+            // TODO: (REVIEW) Directly assigning DTO value to entity. If domain rules become complex,
+            // consider using a dedicated mapper or factory to encapsulate invariants.
+            entity.setComerro(comerro);
+        } else {
+            // TODO: (REVIEW) Decision: when DTO.comerro is null, we set a sensible default (0).
+            // This mirrors safe behavior for primitive field in legacy code (int default 0) while
+            // making the decision explicit. If business requires null persistence, change entity field to Integer.
+            entity.setComerro(0);
         }
 
-        entity.setNome(dto.getNome());
-
-        // Handle comerro mapping carefully:
-        // If DTO uses a nullable wrapper and is null, choose a sensible default (0) to avoid NPEs
-        // TODO: (REVIEW) Defaulting null DTO.comerro to 0 to match legacy primitive int semantics
-        Integer dtoComerro = dto.getComerro();
-        entity.setComerro(dtoComerro != null ? dtoComerro : 0);
-
-        return entity;
+        return arquivoRepository.save(entity);
     }
 
-    private ArquivoDto toDto(Arquivo entity) {
-        ArquivoDto dto = new ArquivoDto();
+    /**
+     * Updates an existing Arquivo with values from the given DTO.
+     *
+     * @param id  the id of the Arquivo to update
+     * @param dto the DTO containing updated values
+     * @return the updated Arquivo entity
+     */
+    @Transactional
+    public Arquivo update(Long id, ArquivoDto dto) {
+        Objects.requireNonNull(id, "id must not be null");
+        Objects.requireNonNull(dto, "ArquivoDto must not be null");
 
-        dto.setId(entity.getId());
-        dto.setNome(entity.getNome());
+        Optional<Arquivo> opt = arquivoRepository.findById(id);
+        Arquivo entity = opt.orElseThrow(() -> new NoSuchElementException("Arquivo not found with id: " + id));
 
-        // Preserve legacy behavior: read comerro from entity (likely via legacy getter getComerro)
-        // TODO: (REVIEW) Using entity.getComerro() to populate DTO.comerro following legacy accessor
-        dto.setComerro(entity.getComerro());
+        // Map fields from DTO to entity (only when provided)
+        // TODO: (REVIEW) Partial update strategy chosen: only non-null DTO fields are applied.
+        // If full-replace semantics are required, change logic to overwrite fields even when null.
+        if (dto.getComerro() != null) {
+            Integer comerro = dto.getComerro();
+            validateComerro(comerro);
+            entity.setComerro(comerro);
+        }
+        // else: keep existing value
 
-        return dto;
+        // TODO: (REVIEW) Map other updatable fields similarly:
+        // if (dto.getNome() != null) entity.setNome(dto.getNome());
+
+        return arquivoRepository.save(entity);
+    }
+
+    /**
+     * Basic validation for comerro value.
+     * Current rules: non-negative integer. Adjust as business rules evolve.
+     *
+     * @param comerro the value to validate
+     * @throws IllegalArgumentException if validation fails
+     */
+    private void validateComerro(Integer comerro) {
+        // TODO: (REVIEW) Validation rule chosen: comerro must be >= 0.
+        // If domain requires different constraints (max value, allowed set), update here.
+        if (comerro < 0) {
+            throw new IllegalArgumentException("comerro must be non-negative");
+        }
     }
 }
