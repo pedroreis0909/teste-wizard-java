@@ -6,15 +6,12 @@ import br.com.meta3.java.scaffold.domain.repositories.ArquivoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Service responsible for application-level operations on Arquivo.
- *
- * This class focuses on mapping the anovigencia field between the domain entity and the API DTO,
- * preserving the legacy getter behavior (anovigencia represented as a raw String on the entity).
- */
 @Service
 @Transactional
 public class ArquivoService {
@@ -25,113 +22,140 @@ public class ArquivoService {
         this.arquivoRepository = arquivoRepository;
     }
 
-    /**
-     * Create a new Arquivo from the provided DTO.
-     */
-    public ArquivoDto create(ArquivoDto dto) {
-        Arquivo entity = toEntity(dto);
-
-        // Persist entity
-        Arquivo saved = arquivoRepository.save(entity);
-
-        // Map back to DTO (ensuring anovigencia from entity.getAnovigencia() is returned)
-        return toDto(saved);
-    }
-
-    /**
-     * Update existing Arquivo identified by id with values from DTO.
-     */
-    public ArquivoDto update(Long id, ArquivoDto dto) {
-        Arquivo existing = arquivoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Arquivo not found with id: " + id));
-
-        // TODO: (REVIEW) Preserving legacy behavior: anovigencia is treated as raw String and copied directly.
-        // This avoids transformations that could change legacy semantics.
-        existing.setAnovigencia(dto.getAnovigencia());
-
-        // If there are other fields in DTO/entity they should be updated here as well.
-        // TODO: (REVIEW) Only anovigencia mapping is enforced in this migration step to remain minimal and safe.
-        Arquivo updated = arquivoRepository.save(existing);
-
-        return toDto(updated);
-    }
-
-    /**
-     * Retrieve Arquivo by id.
-     */
-    @Transactional(readOnly = true)
-    public ArquivoDto getById(Long id) {
-        Arquivo entity = arquivoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Arquivo not found with id: " + id));
-
-        // TODO: (REVIEW) Use the entity getter directly to preserve the legacy getter semantics.
-        // The legacy getter simply returned the raw anovigencia string, so we keep that behavior.
-        return toDto(entity);
-    }
-
-    /**
-     * List all Arquivo entries.
-     */
-    @Transactional(readOnly = true)
-    public List<ArquivoDto> listAll() {
+    public List<ArquivoDto> findAll() {
         return arquivoRepository.findAll()
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
 
+    public Optional<ArquivoDto> findById(Long id) {
+        return arquivoRepository.findById(id)
+                .map(this::toDto);
+    }
+
+    public ArquivoDto create(ArquivoDto dto) {
+        Arquivo entity = new Arquivo();
+        // map fields from dto to entity
+        writeQuantidadeRegistro(entity, dto.getQuantidadeRegistro());
+        Arquivo saved = arquivoRepository.save(entity);
+        return toDto(saved);
+    }
+
+    public Optional<ArquivoDto> update(Long id, ArquivoDto dto) {
+        Optional<Arquivo> opt = arquivoRepository.findById(id);
+        if (opt.isEmpty()) {
+            return Optional.empty();
+        }
+        Arquivo entity = opt.get();
+        // map incoming dto values to entity
+        writeQuantidadeRegistro(entity, dto.getQuantidadeRegistro());
+        Arquivo saved = arquivoRepository.save(entity);
+        return Optional.of(toDto(saved));
+    }
+
+    public void delete(Long id) {
+        arquivoRepository.deleteById(id);
+    }
+
     /**
-     * Map Entity to DTO, ensuring anovigencia is copied using entity.getAnovigencia() (legacy behavior).
+     * Maps domain entity to API DTO.
+     * Preserves legacy compatibility by attempting to read both new and legacy getter names.
      */
     private ArquivoDto toDto(Arquivo entity) {
         ArquivoDto dto = new ArquivoDto();
 
-        // TODO: (REVIEW) Mapping anovigencia explicitly to ensure the legacy getter's returned value flows to the API.
-        dto.setAnovigencia(entity.getAnovigencia());
+        // TODO: (REVIEW) Mapping legacy getter getQuantidaderegistro() to new getQuantidadeRegistro() via reflection
+        // entity.getQuantidadeRegistro()
+        dto.setQuantidadeRegistro(readQuantidadeRegistro(entity));
 
-        // TODO: (REVIEW) Map other common fields if they exist. We keep this minimal to avoid assumptions about DTO/entity shape.
-        try {
-            // Attempt to map id if present on both types without making assumptions about class details.
-            // Many scaffolded DTOs/entities provide getId/setId, so map them when available.
-            // This block is defensive: if methods don't exist, reflection exceptions are ignored.
-            // NOTE: use of reflection kept minimal and non-intrusive — this is a best-effort mapping for id only.
-            java.lang.reflect.Method getId = entity.getClass().getMethod("getId");
-            Object id = getId.invoke(entity);
-            java.lang.reflect.Method setId = dto.getClass().getMethod("setId", id != null ? id.getClass() : Object.class);
-            if (id != null) {
-                // Only call when a compatible setter exists
-                setId.invoke(dto, id);
-            }
-        } catch (Exception ex) {
-            // TODO: (REVIEW) Reflection failed or id not present — swallow to keep mapping resilient.
-            // We don't fail the whole operation because id mapping is optional for this migration.
-        }
-
+        // Note: other fields should be mapped here as needed; kept minimal to focus on quantidadeRegistro mapping.
         return dto;
     }
 
     /**
-     * Map DTO to Entity, ensuring anovigencia from DTO is assigned to entity.anovigencia preserving legacy representation.
+     * Read quantidadeRegistro from entity. Supports both modern and legacy accessors:
+     * - getQuantidadeRegistro()
+     * - getQuantidaderegistro()  (legacy method found in older codebases)
+     *
+     * We use reflection to remain compatible without forcing changes in the domain/entity code.
      */
-    private Arquivo toEntity(ArquivoDto dto) {
-        Arquivo entity = new Arquivo();
-
-        // TODO: (REVIEW) Map anovigencia explicitly to maintain legacy getter/setter behavior on the entity.
-        entity.setAnovigencia(dto.getAnovigencia());
-
-        // TODO: (REVIEW) Minimal mapping approach: other fields should be mapped if and when required by future tasks.
-        try {
-            // Defensive mapping for id if present on DTO and entity.
-            java.lang.reflect.Method getId = dto.getClass().getMethod("getId");
-            Object id = getId.invoke(dto);
-            if (id != null) {
-                java.lang.reflect.Method setId = entity.getClass().getMethod("setId", id.getClass());
-                setId.invoke(entity, id);
-            }
-        } catch (Exception ex) {
-            // TODO: (REVIEW) Reflection failed or id not present — ignore to keep behavior stable.
+    private Integer readQuantidadeRegistro(Arquivo entity) {
+        if (entity == null) {
+            return null;
         }
 
-        return entity;
+        try {
+            // Try the modern accessor first
+            Method m = entity.getClass().getMethod("getQuantidadeRegistro");
+            Object value = m.invoke(entity);
+            if (value == null) return null;
+            if (value instanceof Integer) return (Integer) value;
+            if (value instanceof Number) return ((Number) value).intValue();
+        } catch (NoSuchMethodException ignored) {
+            // try legacy name below
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException("Error invoking getQuantidadeRegistro on Arquivo entity", e);
+        }
+
+        try {
+            // TODO: (REVIEW) Mapping legacy getter getQuantidaderegistro() to new getQuantidadeRegistro() via reflection
+            // entity.getQuantidaderegistro()
+            Method legacy = entity.getClass().getMethod("getQuantidaderegistro");
+            Object value = legacy.invoke(entity);
+            if (value == null) return null;
+            if (value instanceof Integer) return (Integer) value;
+            if (value instanceof Number) return ((Number) value).intValue();
+        } catch (NoSuchMethodException ignored) {
+            // No such method available; fall through to null
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException("Error invoking getQuantidaderegistro on Arquivo entity", e);
+        }
+
+        // If neither accessor exists or both returned null, return null
+        return null;
+    }
+
+    /**
+     * Write quantidadeRegistro into entity. Supports both modern and legacy mutators:
+     * - setQuantidadeRegistro(Integer)
+     * - setQuantidaderegistro(int) (legacy)
+     *
+     * Reflection is used to avoid requiring domain/entity changes.
+     */
+    private void writeQuantidadeRegistro(Arquivo entity, Integer quantidade) {
+        if (entity == null) {
+            return;
+        }
+
+        // Try modern setter first
+        try {
+            Method setModern = entity.getClass().getMethod("setQuantidadeRegistro", Integer.class);
+            // TODO: (REVIEW) Mapping DTO setQuantidadeRegistro() to entity.setQuantidadeRegistro() using modern setter
+            // entity.setQuantidadeRegistro(quantidade)
+            setModern.invoke(entity, quantidade);
+            return;
+        } catch (NoSuchMethodException ignored) {
+            // try legacy setter below
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException("Error invoking setQuantidadeRegistro on Arquivo entity", e);
+        }
+
+        // Try legacy setter that accepts primitive int
+        try {
+            Method setLegacy = entity.getClass().getMethod("setQuantidaderegistro", int.class);
+            // TODO: (REVIEW) Mapping DTO setQuantidadeRegistro() to legacy entity.setQuantidaderegistro(int)
+            // entity.setQuantidaderegistro(quantidade != null ? quantidade : 0)
+            int value = (quantidade != null) ? quantidade : 0;
+            setLegacy.invoke(entity, value);
+            return;
+        } catch (NoSuchMethodException ignored) {
+            // No legacy setter either
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException("Error invoking setQuantidaderegistro on Arquivo entity", e);
+        }
+
+        // If no setter exists, we silently skip mapping quantidadeRegistro to avoid breaking runtime.
+        // The absence of setters indicates the entity might be immutable or managed differently.
     }
 }

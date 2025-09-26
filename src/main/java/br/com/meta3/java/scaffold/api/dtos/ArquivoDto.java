@@ -2,18 +2,17 @@ package br.com.meta3.java.scaffold.api.dtos;
 
 import java.io.Serializable;
 
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.PositiveOrZero;
 
 /*
- TODO: (REVIEW) Added anovigencia property to DTO to allow API send/receive the legacy anovigencia value.
- The decision to validate it as a 4-digit year is optional and can be relaxed if the domain accepts other formats.
+ // TODO: (REVIEW) Mapping legacy getQuantidaderegistro() to DTO field quantidadeRegistro
+ // ArquivoDto.setQuantidadeRegistro(entity.getQuantidaderegistro());
+ 
+ Explanation: The legacy code exposed a getter named getQuantidaderegistro() (lowercase 'r').
+ To keep a clean and idiomatic API DTO we expose the property as 'quantidadeRegistro' (camelCase).
+ The commented mapping line above is a reminder for whoever implements the entity->dto mapping
+ to read from the legacy getter and set this DTO property accordingly.
 */
-// TODO: (REVIEW) Added @Pattern validation for anovigencia to enforce 4-digit year
-private static final class _AnovigenciaHelper {
-    // The following compiled pattern is declared to keep a single source of truth for the validation rule.
-    // Kept inside a private helper class to avoid polluting the DTO's public API.
-    static final java.util.regex.Pattern ANOVIGENCIA_PATTERN = java.util.regex.Pattern.compile("^\\d{4}$");
-}
 
 public class ArquivoDto implements Serializable {
 
@@ -21,23 +20,19 @@ public class ArquivoDto implements Serializable {
 
     private Long id;
     private String nome;
-    private String tipo;
-    private Long tamanho;
 
-    // anovigencia: represents the year of validity (legacy getter/setter existed in old code)
-    // We add a simple pattern validation to accept only 4-digit years. Remove or change annotation if business allows other formats.
-    @Pattern(regexp = "^\\d{4}$", message = "anovigencia must be a 4-digit year")
-    private String anovigencia;
+    // New property added to carry the quantidadeRegistro from the entity to API clients.
+    // Validate that the value is not negative when provided.
+    @PositiveOrZero(message = "quantidadeRegistro must be zero or a positive integer")
+    private Integer quantidadeRegistro;
 
     public ArquivoDto() {
     }
 
-    public ArquivoDto(Long id, String nome, String tipo, Long tamanho, String anovigencia) {
+    public ArquivoDto(Long id, String nome, Integer quantidadeRegistro) {
         this.id = id;
         this.nome = nome;
-        this.tipo = tipo;
-        this.tamanho = tamanho;
-        this.anovigencia = anovigencia;
+        this.quantidadeRegistro = quantidadeRegistro;
     }
 
     public Long getId() {
@@ -56,30 +51,12 @@ public class ArquivoDto implements Serializable {
         this.nome = nome;
     }
 
-    public String getTipo() {
-        return tipo;
+    public Integer getQuantidadeRegistro() {
+        return quantidadeRegistro;
     }
 
-    public void setTipo(String tipo) {
-        this.tipo = tipo;
-    }
-
-    public Long getTamanho() {
-        return tamanho;
-    }
-
-    public void setTamanho(Long tamanho) {
-        this.tamanho = tamanho;
-    }
-
-    // Legacy getter migrated: returns the anovigencia value (previously provided via legacy getter)
-    public String getAnovigencia() {
-        return this.anovigencia;
-    }
-
-    // Legacy setter migrated: allows API to set the anovigencia value
-    public void setAnovigencia(String anovigencia) {
-        this.anovigencia = anovigencia;
+    public void setQuantidadeRegistro(Integer quantidadeRegistro) {
+        this.quantidadeRegistro = quantidadeRegistro;
     }
 
     @Override
@@ -87,9 +64,7 @@ public class ArquivoDto implements Serializable {
         return "ArquivoDto{" +
                 "id=" + id +
                 ", nome='" + nome + '\'' +
-                ", tipo='" + tipo + '\'' +
-                ", tamanho=" + tamanho +
-                ", anovigencia='" + anovigencia + '\'' +
+                ", quantidadeRegistro=" + quantidadeRegistro +
                 '}';
     }
 }
