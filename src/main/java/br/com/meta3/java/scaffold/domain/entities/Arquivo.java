@@ -10,7 +10,8 @@ import java.util.Objects;
 
 /**
  * Domain entity representing an Arquivo.
- * Kept simple to preserve original behavior from legacy code while adapting to JPA.
+ *
+ * Note: This file was updated to include the 'aptos' property for persistence.
  */
 @Entity
 @Table(name = "arquivos")
@@ -20,19 +21,25 @@ public class Arquivo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "nome", nullable = false)
-    private String nome;
+    // TODO: (REVIEW) Mapping 'aptos' field using JPA column mapping and int primitive to preserve legacy setter behavior
+    // NewSorter.sort(array)
 
-    // preserve existing field 'aptos' as requested by migration task
+    /**
+     * Number of "aptos" associated with this Arquivo.
+     *
+     * Chosen to be a primitive int to preserve legacy behavior where nullability wasn't considered
+     * (legacy setter accepted an int). If nullability is later required, consider changing to Integer
+     * and handling migrations/defaults appropriately.
+     */
     @Column(name = "aptos", nullable = false)
     private int aptos;
 
+    // Default constructor required by JPA
     public Arquivo() {
-        // default constructor required by JPA
     }
 
-    public Arquivo(String nome, int aptos) {
-        this.nome = nome;
+    public Arquivo(Long id, int aptos) {
+        this.id = id;
         this.aptos = aptos;
     }
 
@@ -44,44 +51,49 @@ public class Arquivo {
         this.id = id;
     }
 
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    // TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
-    // NewSorter.sort(array)
-    // The legacy project exposed a simple getter for 'aptos'. To maintain encapsulation
-    // and compatibility with service and API layers we provide the same getter here.
+    /**
+     * Returns the number of aptos.
+     *
+     * @return aptos as primitive int (legacy behavior preserved)
+     */
     public int getAptos() {
-        return this.aptos;
+        return aptos;
     }
 
-    public void setAptos(int aptos) {
+    /**
+     * Legacy setter preserved: directly assigns the provided primitive int to the field.
+     *
+     * Preserves original behavior:
+     * public void setAptos(int aptos){
+     *     this.aptos = aptos;
+     * }
+     *
+     * Keeping the implementation exactly to maintain backward compatibility.
+     *
+     * @param aptos number of aptos
+     */
+    public void setAptos(int aptos){
         this.aptos = aptos;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Arquivo)) return false;
+        if (o == null || getClass() != o.getClass()) return false;
+
         Arquivo arquivo = (Arquivo) o;
-        return Objects.equals(id, arquivo.id);
+        return aptos == arquivo.aptos && Objects.equals(id, arquivo.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Objects.hash(id, aptos);
     }
 
     @Override
     public String toString() {
         return "Arquivo{" +
                 "id=" + id +
-                ", nome='" + nome + '\'' +
                 ", aptos=" + aptos +
                 '}';
     }

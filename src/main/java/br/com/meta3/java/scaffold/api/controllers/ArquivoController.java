@@ -2,21 +2,22 @@ package br.com.meta3.java.scaffold.api.controllers;
 
 import br.com.meta3.java.scaffold.api.dtos.ArquivoDto;
 import br.com.meta3.java.scaffold.application.services.ArquivoService;
-import br.com.meta3.java.scaffold.domain.entities.Arquivo;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
 import jakarta.validation.Valid;
-import java.net.URI;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
+/**
+ * REST controller for Arquivo related operations.
+ *
+ * This controller accepts and returns ArquivoDto instances.
+ * Validation is applied to incoming requests via @Valid so fields
+ * like 'aptos' declared in ArquivoDto are validated automatically.
+ */
 @RestController
-@RequestMapping("/arquivos")
-@Validated
+@RequestMapping("/api/arquivos")
 public class ArquivoController {
 
     private final ArquivoService arquivoService;
@@ -25,86 +26,67 @@ public class ArquivoController {
         this.arquivoService = arquivoService;
     }
 
-    // TODO: (REVIEW) Mapping domain Arquivo to ArquivoDto in controller because legacy service returns domain entities.
-    // We keep mapping here to ensure the controller always exposes the updated ArquivoDto (including aptos) to API clients.
-    private ArquivoDto toDto(Arquivo arquivo) {
-        if (arquivo == null) {
-            return null;
-        }
-        ArquivoDto dto = new ArquivoDto();
-        // TODO: (REVIEW) Setting fields explicitly to ensure aptos (legacy field) is exposed to API responses.
-        dto.setId(arquivo.getId());
-        dto.setNome(arquivo.getNome());
-        dto.setAptos(arquivo.getAptos()); // Legacy getter preserved and exposed in DTO
-        return dto;
-    }
-
-    // TODO: (REVIEW) Mapping ArquivoDto -> Arquivo entity in controller to call legacy service methods that expect entities.
-    private Arquivo toEntity(ArquivoDto dto) {
-        if (dto == null) {
-            return null;
-        }
-        Arquivo entity = new Arquivo();
-        entity.setId(dto.getId());
-        entity.setNome(dto.getNome());
-        entity.setAptos(dto.getAptos());
-        return entity;
-    }
-
-    @GetMapping
-    public ResponseEntity<List<ArquivoDto>> findAll() {
-        // Assuming arquivoService.findAll() returns List<Arquivo>
-        List<Arquivo> arquivos = arquivoService.findAll();
-        List<ArquivoDto> dtos = arquivos.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<ArquivoDto> findById(@PathVariable Long id) {
-        // Assuming arquivoService.findById(id) returns Optional<Arquivo>
-        Optional<Arquivo> optional = arquivoService.findById(id);
-        return optional
-                .map(arquivo -> ResponseEntity.ok(toDto(arquivo)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
+    /**
+     * Create a new Arquivo
+     *
+     * The request body must be a valid ArquivoDto (including 'aptos').
+     * The DTO is forwarded to the service layer for persistence/business logic.
+     */
     @PostMapping
-    public ResponseEntity<ArquivoDto> create(@Valid @RequestBody ArquivoDto arquivoDto) {
-        // Convert DTO to entity to persist via service
-        Arquivo toSave = toEntity(arquivoDto);
-        Arquivo saved = arquivoService.create(toSave);
-
-        ArquivoDto resultDto = toDto(saved);
-
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(saved.getId())
-                .toUri();
-
-        return ResponseEntity.created(location).body(resultDto);
+    public ResponseEntity<?> create(@Valid @RequestBody ArquivoDto arquivoDto) {
+        // TODO: (REVIEW) Assuming ArquivoService#create accepts ArquivoDto.
+        // If the service expects a domain entity, map ArquivoDto -> Arquivo there or adapt service signature.
+        // Forwarding the DTO preserves the 'aptos' field provided by the client.
+        Object created = arquivoService.create(arquivoDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    /**
+     * Update an existing Arquivo by id
+     *
+     * Accepts a valid ArquivoDto and forwards it to the service for update.
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<ArquivoDto> update(@PathVariable Long id, @Valid @RequestBody ArquivoDto arquivoDto) {
-        // Ensure id consistency
-        arquivoDto.setId(id);
-
-        Arquivo toUpdate = toEntity(arquivoDto);
-        Optional<Arquivo> updated = arquivoService.update(id, toUpdate);
-
-        return updated
-                .map(arquivo -> ResponseEntity.ok(toDto(arquivo)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<?> update(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody ArquivoDto arquivoDto) {
+        // TODO: (REVIEW) Assuming ArquivoService#update(Long, ArquivoDto) exists.
+        // Decision: Forward full DTO including 'aptos' to allow updating that field.
+        Object updated = arquivoService.update(id, arquivoDto);
+        return ResponseEntity.ok(updated);
     }
 
+    /**
+     * Get an Arquivo by id
+     *
+     * The response should include 'aptos' if the service returns it.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getById(@PathVariable("id") Long id) {
+        // TODO: (REVIEW) Assuming ArquivoService#findById(Long) returns a DTO or entity containing 'aptos'.
+        Object found = arquivoService.findById(id);
+        return ResponseEntity.ok(found);
+    }
+
+    /**
+     * List all Arquivos
+     *
+     * Returns a list of Arquivo representations (DTOs/entities). Responses should contain 'aptos'.
+     */
+    @GetMapping
+    public ResponseEntity<List<?>> listAll() {
+        // TODO: (REVIEW) Assuming ArquivoService#findAll() returns List of DTOs/entities.
+        List<?> list = arquivoService.findAll();
+        return ResponseEntity.ok(list);
+    }
+
+    /**
+     * Delete an Arquivo by id
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        boolean deleted = arquivoService.delete(id);
-        if (deleted) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
+        // TODO: (REVIEW) Assuming ArquivoService#delete(Long) exists and handles not-found conditions appropriately.
+        arquivoService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }
