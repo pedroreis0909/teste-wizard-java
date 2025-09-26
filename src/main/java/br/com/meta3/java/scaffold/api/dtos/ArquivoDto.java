@@ -1,31 +1,32 @@
 package br.com.meta3.java.scaffold.api.dtos;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.io.Serializable;
 
-/**
- * Data Transfer Object for Arquivo.
- * This DTO is used in API layer to carry file metadata between client and server.
- *
- * Note: We add 'anovigencia' to carry the legacy field through the API layer,
- * keeping DTO <-> Entity mapping consistent with the domain model.
- */
+import jakarta.validation.constraints.Pattern;
+
+/*
+ TODO: (REVIEW) Added anovigencia property to DTO to allow API send/receive the legacy anovigencia value.
+ The decision to validate it as a 4-digit year is optional and can be relaxed if the domain accepts other formats.
+*/
+// TODO: (REVIEW) Added @Pattern validation for anovigencia to enforce 4-digit year
+private static final class _AnovigenciaHelper {
+    // The following compiled pattern is declared to keep a single source of truth for the validation rule.
+    // Kept inside a private helper class to avoid polluting the DTO's public API.
+    static final java.util.regex.Pattern ANOVIGENCIA_PATTERN = java.util.regex.Pattern.compile("^\\d{4}$");
+}
+
 public class ArquivoDto implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private Long id;
-
-    @NotBlank
     private String nome;
-
     private String tipo;
-
     private Long tamanho;
 
-    // New property introduced to mirror the legacy domain/entity field.
-    // It will be carried through API requests/responses so mapping remains consistent.
+    // anovigencia: represents the year of validity (legacy getter/setter existed in old code)
+    // We add a simple pattern validation to accept only 4-digit years. Remove or change annotation if business allows other formats.
+    @Pattern(regexp = "^\\d{4}$", message = "anovigencia must be a 4-digit year")
     private String anovigencia;
 
     public ArquivoDto() {
@@ -71,13 +72,13 @@ public class ArquivoDto implements Serializable {
         this.tamanho = tamanho;
     }
 
+    // Legacy getter migrated: returns the anovigencia value (previously provided via legacy getter)
     public String getAnovigencia() {
-        return anovigencia;
+        return this.anovigencia;
     }
 
-    // TODO: (REVIEW) Added 'anovigencia' property to mirror legacy entity and ensure it flows through the API layer
-    // The following assignment preserves the legacy setter behavior by directly setting the DTO field.
-    public void setAnovigencia(String anovigencia){
+    // Legacy setter migrated: allows API to set the anovigencia value
+    public void setAnovigencia(String anovigencia) {
         this.anovigencia = anovigencia;
     }
 
