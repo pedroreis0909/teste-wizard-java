@@ -1,151 +1,146 @@
 package br.com.meta3.java.scaffold.application.services;
 
-import java.util.Optional;
-import java.util.Set;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.Validator;
-
 import br.com.meta3.java.scaffold.api.dtos.ArquivoDto;
 import br.com.meta3.java.scaffold.domain.entities.Arquivo;
 import br.com.meta3.java.scaffold.domain.repositories.ArquivoRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Service responsible for application-level operations on Arquivo.
- * Responsible for mapping between ArquivoDto and Arquivo entity,
- * validating incoming DTOs and persisting entities through the repository.
+ * This class maps semdocumento between Arquivo and ArquivoDto for create/read/update flows,
+ * validates the semdocumento value and persists changes via the ArquivoRepository.
  */
 @Service
-@Transactional
 public class ArquivoService {
 
     private final ArquivoRepository arquivoRepository;
-    private final Validator validator;
 
-    public ArquivoService(ArquivoRepository arquivoRepository, Validator validator) {
+    public ArquivoService(ArquivoRepository arquivoRepository) {
         this.arquivoRepository = arquivoRepository;
-        this.validator = validator;
     }
 
     /**
-     * Create a new Arquivo from the given DTO.
-     * Validates the DTO, maps aptos (and other fields) and persists the entity.
+     * Create a new Arquivo from DTO, validating semdocumento and persisting.
      */
+    @Transactional
     public ArquivoDto create(ArquivoDto dto) {
-        validateDto(dto);
+        validateSemdocumento(dto.getSemdocumento());
 
-        // Map DTO to Entity including the 'aptos' field
+        // Map DTO -> entity (ensure semdocumento is set)
         Arquivo entity = toEntity(dto);
 
-        // Persist and return mapped DTO
         Arquivo saved = arquivoRepository.save(entity);
+
+        // Map persisted entity -> DTO (ensure semdocumento preserved)
         return toDto(saved);
     }
 
     /**
-     * Update an existing Arquivo identified by id using values from the DTO.
-     * Validates the DTO, maps aptos (and other fields) into the existing entity and persists.
+     * Find Arquivo by id and return as DTO.
      */
-    public ArquivoDto update(Long id, ArquivoDto dto) {
-        validateDto(dto);
+    @Transactional(readOnly = true)
+    public ArquivoDto findById(Long id) {
+        return arquivoRepository.findById(id)
+                .map(this::toDto)
+                .orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
+    }
 
+    /**
+     * Update existing Arquivo with values from DTO (including semdocumento) and persist.
+     */
+    @Transactional
+    public ArquivoDto update(Long id, ArquivoDto dto) {
         Arquivo existing = arquivoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
 
-        // Map DTO fields into existing entity, explicitly updating 'aptos'
-        mapDtoToExistingEntity(dto, existing);
+        validateSemdocumento(dto.getSemdocumento());
+
+        // TODO: (REVIEW) Mapping semdocumento explicitly to preserve legacy behavior (legacy getter provided semdocumento)
+        // TODO: (REVIEW) toEntity(dto)
+        existing.setSemdocumento(dto.getSemdocumento());
+
+        // NOTE: If there are additional fields in Arquivo/ArquivoDto they should be updated here as well.
+        // TODO: (REVIEW) Only semdocumento guaranteed by legacy code; other fields left unchanged unless explicitly mapped
+        // TODO: (REVIEW) existing.setOtherField(dto.getOtherField())
 
         Arquivo saved = arquivoRepository.save(existing);
         return toDto(saved);
     }
 
     /**
-     * Helper: validate DTO using jakarta.validation.Validator.
-     * Throws ConstraintViolationException if any constraint is violated.
+     * Delete an Arquivo by id.
      */
-    private void validateDto(ArquivoDto dto) {
-        // Use programmatic validation to ensure the new 'aptos' field constraints are enforced
-        Set<ConstraintViolation<ArquivoDto>> violations = validator.validate(dto);
-        if (!violations.isEmpty()) {
-            throw new ConstraintViolationException("ArquivoDto validation failed", violations);
+    @Transactional
+    public void delete(Long id) {
+        if (!arquivoRepository.findById(id).isPresent()) {
+            throw new IllegalArgumentException("Arquivo not found with id: " + id);
         }
-
-        // TODO: (REVIEW) Decided to use programmatic Validator for DTO to ensure 'aptos' constraints are applied at service boundary
-        // validator.validate(dto)
+        arquivoRepository.deleteById(id);
     }
 
     /**
-     * Map ArquivoDto to a new Arquivo entity.
-     * Ensures 'aptos' is copied from DTO into entity.
+     * List all Arquivo as DTOs.
      */
+    @Transactional(readOnly = true)
+    public List<ArquivoDto> listAll() {
+        return arquivoRepository.findAll()
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    // -------------------------
+    // Mapping helpers & validation
+    // -------------------------
+
     private Arquivo toEntity(ArquivoDto dto) {
-        Arquivo arquivo = new Arquivo();
-
-        // Basic mapping: copy id if present (for completeness), other fields as available.
-        // We avoid assuming fields beyond 'aptos' exist; map common ones if present in DTO.
-        try {
-            // If DTO exposes set/get for id, name, etc., map them. We guard with optional checks to avoid NPEs.
-            // Note: the project already contains Arquivo and ArquivoDto; we map the common fields expected.
-            if (dto.getId() != null) {
-                arquivo.setId(dto.getId());
-            }
-        } catch (NoSuchMethodError | NoSuchMethodException | IllegalStateException e) {
-            // If DTO doesn't expose some methods, ignore and continue mapping known fields.
-        } catch (Exception e) {
-            // Generic safeguard: do not fail mapping for optional fields.
+        Arquivo a = new Arquivo();
+        if (dto.getId() != null) {
+            a.setId(dto.getId());
         }
 
-        // TODO: (REVIEW) Mapping 'aptos' from DTO to entity using the legacy setter approach.
-        // arquivo.setAptos(dto.getAptos());
-        arquivo.setAptos(dto.getAptos());
+        // TODO: (REVIEW) Explicitly mapping semdocumento from DTO to Entity to reflect legacy getter usage
+        // TODO: (REVIEW) toEntity(dto)
+        a.setSemdocumento(dto.getSemdocumento());
 
-        // If there are other fields in ArquivoDto and Arquivo, they should be mapped here similarly.
-        return arquivo;
+        // NOTE: Other fields, if present, should be mapped here. They are intentionally omitted because
+        // legacy provided only semdocumento snippet; mapping only the known field keeps behavior minimal and safe.
+        // TODO: (REVIEW) a.setOtherField(dto.getOtherField())
+
+        return a;
     }
 
-    /**
-     * Map fields from DTO into an existing entity instance (used on update).
-     * Explicitly sets 'aptos' on the existing entity.
-     */
-    private void mapDtoToExistingEntity(ArquivoDto dto, Arquivo existing) {
-        // TODO: (REVIEW) Mapping updated fields into existing entity, ensuring 'aptos' is updated.
-        // existing.setAptos(dto.getAptos());
-        existing.setAptos(dto.getAptos());
-
-        // Map other updatable fields if present on DTO/entity.
-        try {
-            if (dto.getId() != null) {
-                existing.setId(dto.getId());
-            }
-        } catch (Exception e) {
-            // Ignore optional mapping errors for fields not present.
-        }
-    }
-
-    /**
-     * Convert entity to DTO for responses.
-     * Ensures 'aptos' is included in returned DTO.
-     */
-    private ArquivoDto toDto(Arquivo entity) {
+    private ArquivoDto toDto(Arquivo a) {
         ArquivoDto dto = new ArquivoDto();
+        dto.setId(a.getId());
 
-        // Map id if present
-        try {
-            dto.setId(entity.getId());
-        } catch (Exception e) {
-            // ignore if methods differ
-        }
+        // TODO: (REVIEW) Explicitly mapping semdocumento from Entity to DTO to preserve legacy behavior
+        // TODO: (REVIEW) toDto(a)
+        dto.setSemdocumento(a.getSemdocumento());
 
-        // TODO: (REVIEW) Ensure 'aptos' is returned to API clients as it was part of domain in legacy code.
-        // dto.setAptos(entity.getAptos());
-        dto.setAptos(entity.getAptos());
-
-        // Map other fields as necessary
+        // NOTE: Map other entity fields to DTO here as needed.
+        // TODO: (REVIEW) dto.setOtherField(a.getOtherField())
 
         return dto;
+    }
+
+    /**
+     * Validate semdocumento value coming from DTO.
+     * Business rule: semdocumento must not be null and must be non-negative.
+     * Adjust validation rules here if project requires different constraints.
+     */
+    private void validateSemdocumento(Integer semdocumento) {
+        // TODO: (REVIEW) Using non-null and non-negative validation because legacy code exposed primitive int getter (no null)
+        // TODO: (REVIEW) validateSemdocumento(semdocumento)
+        if (semdocumento == null) {
+            throw new IllegalArgumentException("semdocumento must not be null");
+        }
+        if (semdocumento < 0) {
+            throw new IllegalArgumentException("semdocumento must be non-negative");
+        }
     }
 }

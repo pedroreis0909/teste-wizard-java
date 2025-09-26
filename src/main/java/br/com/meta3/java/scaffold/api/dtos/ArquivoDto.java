@@ -1,31 +1,77 @@
 package br.com.meta3.java.scaffold.api.dtos;
 
-import jakarta.validation.constraints.Min;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Objects;
 
 /**
- * Data Transfer Object for Arquivo entity used by API layer.
- * Only essential fields are present here; other fields can be added as needed.
+ * Data Transfer Object for Arquivo used by API layer.
+ * Contains semdocumento so the API can transfer this information between client and service layers.
  */
-// TODO: (REVIEW) Using Integer for aptos instead of primitive int to allow distinguishing omitted values
-// and better interplay with validation (null will be treated as "not provided").
-// This decision helps the API distinguish between "not provided" and "explicitly zero".
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ArquivoDto {
 
     private Long id;
     private String nome;
 
-    // Validate that aptos, when provided, is not negative.
-    @Min(0)
-    private Integer aptos;
+    // TODO: (REVIEW) Using Integer for semdocumento instead of primitive int to allow nullable state
+    // TODO: (REVIEW) Integer semdocumento used to represent optional document number coming from legacy code getter that returned primitive int
+    @JsonProperty("semdocumento")
+    private Integer semdocumento;
 
     public ArquivoDto() {
+        // default constructor for serialization frameworks
     }
 
-    public ArquivoDto(Long id, String nome, Integer aptos) {
+    /**
+     * Full constructor including semdocumento to ensure API-layer objects carry this field through.
+     */
+    public ArquivoDto(Long id, String nome, Integer semdocumento) {
         this.id = id;
         this.nome = nome;
-        this.aptos = aptos;
+        this.semdocumento = semdocumento;
+    }
+
+    /**
+     * Convenience constructor without id (for create requests).
+     */
+    public ArquivoDto(String nome, Integer semdocumento) {
+        this.nome = nome;
+        this.semdocumento = semdocumento;
+    }
+
+    // Builder pattern to facilitate construction without introducing external dependencies like Lombok
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private Long id;
+        private String nome;
+        private Integer semdocumento;
+
+        public Builder() {
+        }
+
+        public Builder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder nome(String nome) {
+            this.nome = nome;
+            return this;
+        }
+
+        public Builder semdocumento(Integer semdocumento) {
+            this.semdocumento = semdocumento;
+            return this;
+        }
+
+        public ArquivoDto build() {
+            return new ArquivoDto(id, nome, semdocumento);
+        }
     }
 
     public Long getId() {
@@ -44,40 +90,29 @@ public class ArquivoDto {
         this.nome = nome;
     }
 
-    public Integer getAptos() {
-        return aptos;
+    // Migrated getter from legacy code: changed to return Integer to support nullability and align with DTO usage
+    public Integer getSemdocumento() {
+        return this.semdocumento;
     }
 
-    // TODO: (REVIEW) Migrated legacy setter from legacy code:
-    // Legacy:
-    // public void setAptos(int aptos){
-    //     this.aptos = aptos;
-    // }
-    //
-    // Kept an overloaded setter that accepts primitive int to preserve compatibility with legacy call sites
-    // while preferring the Integer-based setter for nullability/validation behavior.
-    public void setAptos(Integer aptos) {
-        this.aptos = aptos;
-    }
-
-    // Overloaded setter for compatibility with code that may pass primitive int (legacy style).
-    public void setAptos(int aptos) {
-        this.aptos = aptos;
+    public void setSemdocumento(Integer semdocumento) {
+        this.semdocumento = semdocumento;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof ArquivoDto)) return false;
+        if (o == null || getClass() != o.getClass()) return false;
+
         ArquivoDto that = (ArquivoDto) o;
         return Objects.equals(id, that.id) &&
                 Objects.equals(nome, that.nome) &&
-                Objects.equals(aptos, that.aptos);
+                Objects.equals(semdocumento, that.semdocumento);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, nome, aptos);
+        return Objects.hash(id, nome, semdocumento);
     }
 
     @Override
@@ -85,7 +120,7 @@ public class ArquivoDto {
         return "ArquivoDto{" +
                 "id=" + id +
                 ", nome='" + nome + '\'' +
-                ", aptos=" + aptos +
+                ", semdocumento=" + semdocumento +
                 '}';
     }
 }

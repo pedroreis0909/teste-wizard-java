@@ -5,42 +5,41 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
-import java.util.Objects;
 
 /**
- * Domain entity representing an Arquivo.
- *
- * Note: This file was updated to include the 'aptos' property for persistence.
+ * Domain entity representing an Arquivo (file).
+ * This class was updated to expose the legacy accessor for 'semdocumento'.
  */
 @Entity
-@Table(name = "arquivos")
+@Table(name = "arquivo")
 public class Arquivo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: (REVIEW) Mapping 'aptos' field using JPA column mapping and int primitive to preserve legacy setter behavior
-    // NewSorter.sort(array)
+    @Column(name = "nome", nullable = false)
+    private String nome;
 
-    /**
-     * Number of "aptos" associated with this Arquivo.
-     *
-     * Chosen to be a primitive int to preserve legacy behavior where nullability wasn't considered
-     * (legacy setter accepted an int). If nullability is later required, consider changing to Integer
-     * and handling migrations/defaults appropriately.
-     */
-    @Column(name = "aptos", nullable = false)
-    private int aptos;
+    @Lob
+    @Column(name = "conteudo")
+    private byte[] conteudo;
 
-    // Default constructor required by JPA
+    // Adds legacy-backed field 'semdocumento' with JPA column mapping.
+    @Column(name = "semdocumento", nullable = false)
+    private int semdocumento;
+
     public Arquivo() {
     }
 
-    public Arquivo(Long id, int aptos) {
+    public Arquivo(Long id, String nome, byte[] conteudo, int semdocumento) {
         this.id = id;
-        this.aptos = aptos;
+        this.nome = nome;
+        this.conteudo = conteudo;
+        // TODO: (REVIEW) Mapping semdocumento as primitive int to preserve legacy accessor semantics
+        this.semdocumento = semdocumento;
     }
 
     public Long getId() {
@@ -51,50 +50,29 @@ public class Arquivo {
         this.id = id;
     }
 
-    /**
-     * Returns the number of aptos.
-     *
-     * @return aptos as primitive int (legacy behavior preserved)
-     */
-    public int getAptos() {
-        return aptos;
+    public String getNome() {
+        return nome;
     }
 
-    /**
-     * Legacy setter preserved: directly assigns the provided primitive int to the field.
-     *
-     * Preserves original behavior:
-     * public void setAptos(int aptos){
-     *     this.aptos = aptos;
-     * }
-     *
-     * Keeping the implementation exactly to maintain backward compatibility.
-     *
-     * @param aptos number of aptos
-     */
-    public void setAptos(int aptos){
-        this.aptos = aptos;
+    public void setNome(String nome) {
+        this.nome = nome;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        Arquivo arquivo = (Arquivo) o;
-        return aptos == arquivo.aptos && Objects.equals(id, arquivo.id);
+    public byte[] getConteudo() {
+        return conteudo;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, aptos);
+    public void setConteudo(byte[] conteudo) {
+        this.conteudo = conteudo;
     }
 
-    @Override
-    public String toString() {
-        return "Arquivo{" +
-                "id=" + id +
-                ", aptos=" + aptos +
-                '}';
+    // Preserve legacy accessor exactly as in LEGACY_CODE
+    public int getSemdocumento(){
+        return this.semdocumento;
+    }
+
+    public void setSemdocumento(int semdocumento){
+        // TODO: (REVIEW) Mapping semdocumento as primitive int to preserve legacy accessor semantics
+        this.semdocumento = semdocumento;
     }
 }

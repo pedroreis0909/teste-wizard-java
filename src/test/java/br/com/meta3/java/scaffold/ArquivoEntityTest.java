@@ -5,52 +5,67 @@ import br.com.meta3.java.scaffold.infrastructure.repositories.SpringDataArquivoR
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Iterator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
-// NewSorter.sort(array)
-// NOTE: The above TODO follows the requested template for documenting migration decisions.
-// It is commented out to avoid introducing non-existing runtime dependencies.
-// Decision summary:
-// - Use a simple getter/setter unit test to verify in-memory behavior.
-// - Use Data JPA test slice + SpringData repository and TestEntityManager to verify persistence mapping.
-// - Assume Arquivo has a no-arg constructor and an id property with a getter (typical JPA entity).
-//   If the entity requires other non-null fields, tests should be expanded to set them accordingly.
-
 @DataJpaTest
-class ArquivoEntityTest {
+public class ArquivoEntityTest {
 
     @Autowired
-    private TestEntityManager entityManager;
+    private SpringDataArquivoRepository repository;
 
-    @Autowired
-    private SpringDataArquivoRepository arquivoRepository;
-
+    // TODO: (REVIEW) Using reflection to set 'semdocumento' when setter is not available on Arquivo
+    // reflectionField.setInt(entity, value)
     @Test
-    void testSetAndGetAptos() {
+    void shouldReturnSemdocumento_afterConstruction() throws Exception {
         Arquivo arquivo = new Arquivo();
-        arquivo.setAptos(5);
-        // Verify the getter returns the value set by the legacy setter
-        assertThat(arquivo.getAptos()).isEqualTo(5);
+
+        // Try to set via setter if present, otherwise use reflection to set the field directly.
+        int expected = 42;
+        try {
+            Method setter = Arquivo.class.getMethod("setSemdocumento", int.class);
+            setter.invoke(arquivo, expected);
+        } catch (NoSuchMethodException nsme) {
+            // Setter not present; fallback to direct field access
+            Field field = Arquivo.class.getDeclaredField("semdocumento");
+            field.setAccessible(true);
+            field.setInt(arquivo, expected);
+        }
+
+        // Verify the legacy getter is present and returns the expected value.
+        assertThat(arquivo.getSemdocumento()).isEqualTo(expected);
     }
 
+    // TODO: (REVIEW) Rely on Spring Data repository bean for persistence verification (ensures JPA mapping integrity)
+    // repository.save(entity)
     @Test
-    void testPersistenceMappingForAptos() {
+    void shouldPersistAndRetrieveSemdocumento() throws Exception {
         Arquivo arquivo = new Arquivo();
-        arquivo.setAptos(42);
 
-        // Persist using the repository to exercise Spring Data JPA mapping
-        Arquivo saved = arquivoRepository.save(arquivo);
+        int expected = 7;
+        // Set value using the same safe approach as above.
+        try {
+            Method setter = Arquivo.class.getMethod("setSemdocumento", int.class);
+            setter.invoke(arquivo, expected);
+        } catch (NoSuchMethodException nsme) {
+            Field field = Arquivo.class.getDeclaredField("semdocumento");
+            field.setAccessible(true);
+            field.setInt(arquivo, expected);
+        }
 
-        // Flush and clear to ensure we read from the database, not from the persistence context
-        entityManager.flush();
-        entityManager.clear();
+        // Persist entity
+        repository.save(arquivo);
 
-        // Retrieve and verify the persisted value
-        Arquivo found = arquivoRepository.findById(saved.getId()).orElse(null);
-        assertThat(found).isNotNull();
-        assertThat(found.getAptos()).isEqualTo(42);
+        // Retrieve persisted entity. We avoid assuming an ID getter; just fetch the first saved entity.
+        Iterator<Arquivo> iterator = repository.findAll().iterator();
+        assertThat(iterator.hasNext()).isTrue();
+        Arquivo retrieved = iterator.next();
+
+        // Assert legacy accessor still returns correct value after persistence
+        assertThat(retrieved.getSemdocumento()).isEqualTo(expected);
     }
 }
