@@ -5,12 +5,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 /**
  * Domain entity representing an Arquivo (file).
- * This class was updated to expose the legacy accessor for 'semdocumento'.
+ *
+ * NOTE: This file was updated to include the legacy 'semdocumento' field and its
+ * getter/setter to preserve legacy setter functionality and enable persistence/mapping.
  */
 @Entity
 @Table(name = "arquivo")
@@ -20,25 +21,29 @@ public class Arquivo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "nome", nullable = false)
     private String nome;
 
-    @Lob
-    @Column(name = "conteudo")
-    private byte[] conteudo;
+    private String tipo;
 
-    // Adds legacy-backed field 'semdocumento' with JPA column mapping.
+    private Long tamanho;
+
+    // TODO: (REVIEW) Mapping legacy setter setSemdocumento(int) to entity field as primitive int to preserve legacy behavior (no nulls)
+    // TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
+    // NewSorter.sort(array)
+    // Reasoning:
+    // - The legacy setter accepts a primitive int; mapping to primitive keeps the same contract (no null allowed).
+    // - We mark the column as nullable = false to reflect that contract at the DB level.
     @Column(name = "semdocumento", nullable = false)
     private int semdocumento;
 
     public Arquivo() {
+        // default constructor for JPA
     }
 
-    public Arquivo(Long id, String nome, byte[] conteudo, int semdocumento) {
-        this.id = id;
+    public Arquivo(String nome, String tipo, Long tamanho, int semdocumento) {
         this.nome = nome;
-        this.conteudo = conteudo;
-        // TODO: (REVIEW) Mapping semdocumento as primitive int to preserve legacy accessor semantics
+        this.tipo = tipo;
+        this.tamanho = tamanho;
         this.semdocumento = semdocumento;
     }
 
@@ -58,21 +63,40 @@ public class Arquivo {
         this.nome = nome;
     }
 
-    public byte[] getConteudo() {
-        return conteudo;
+    public String getTipo() {
+        return tipo;
     }
 
-    public void setConteudo(byte[] conteudo) {
-        this.conteudo = conteudo;
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
     }
 
-    // Preserve legacy accessor exactly as in LEGACY_CODE
+    public Long getTamanho() {
+        return tamanho;
+    }
+
+    public void setTamanho(Long tamanho) {
+        this.tamanho = tamanho;
+    }
+
+    // Legacy setter preserved: public void setSemdocumento(int semdocumento)
+    public void setSemdocumento(int semdocumento){
+        this.semdocumento = semdocumento;
+    }
+
+    // Getter for semdocumento as requested to enable access and mapping
     public int getSemdocumento(){
         return this.semdocumento;
     }
 
-    public void setSemdocumento(int semdocumento){
-        // TODO: (REVIEW) Mapping semdocumento as primitive int to preserve legacy accessor semantics
-        this.semdocumento = semdocumento;
+    @Override
+    public String toString() {
+        return "Arquivo{" +
+                "id=" + id +
+                ", nome='" + nome + '\'' +
+                ", tipo='" + tipo + '\'' +
+                ", tamanho=" + tamanho +
+                ", semdocumento=" + semdocumento +
+                '}';
     }
 }
