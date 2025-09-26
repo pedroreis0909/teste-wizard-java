@@ -1,78 +1,37 @@
 package br.com.meta3.java.scaffold.api.dtos;
 
+import java.io.Serializable;
+
 import jakarta.validation.constraints.NotNull;
-import java.util.Objects;
 
 /**
- * Data Transfer Object for Arquivo entity used in API layer.
- * Contains only fields necessary to transfer data to/from clients.
+ * Data Transfer Object for Arquivo API.
+ * Contains fields exchanged with the API layer.
  */
-public class ArquivoDto {
+public class ArquivoDto implements Serializable {
 
-    private Long id;
-    private String nome;
+    private static final long serialVersionUID = 1L;
 
-    // TODO: (REVIEW) Using Integer for comcodigosetps instead of primitive int in DTO to allow nullability for partial updates
-    // Integer comcodigosetpsPlaceholder = null
-    // TODO: (REVIEW) Added @NotNull to enforce presence in API payloads. If this field should be optional for partial updates,
-    // TODO: (REVIEW) remove the @NotNull annotation and handle null accordingly in the service layer.
-    @NotNull
-    private Integer comcodigosetps;
+    // TODO: (REVIEW) Changed comerro from primitive int in legacy getter to Integer with @NotNull in DTO
+    // TODO: (REVIEW) Legacy code had: public int getComerro(){ return this.comerro; }
+    // TODO: (REVIEW) Using wrapper Integer allows proper validation and JSON null handling in requests/responses
+    // New decision: keep value as Integer and enforce presence via @NotNull for incoming API payloads
+    @NotNull(message = "comerro must not be null")
+    private Integer comerro;
 
     public ArquivoDto() {
     }
 
-    public ArquivoDto(Long id, String nome, Integer comcodigosetps) {
-        this.id = id;
-        this.nome = nome;
-        this.comcodigosetps = comcodigosetps;
+    public ArquivoDto(Integer comerro) {
+        this.comerro = comerro;
     }
 
-    public Long getId() {
-        return id;
+    public Integer getComerro() {
+        return this.comerro;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setComerro(Integer comerro) {
+        this.comerro = comerro;
     }
 
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    public Integer getComcodigosetps() {
-        return comcodigosetps;
-    }
-
-    public void setComcodigosetps(Integer comcodigosetps) {
-        this.comcodigosetps = comcodigosetps;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ArquivoDto)) return false;
-        ArquivoDto that = (ArquivoDto) o;
-        return Objects.equals(id, that.id) &&
-                Objects.equals(nome, that.nome) &&
-                Objects.equals(comcodigosetps, that.comcodigosetps);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, nome, comcodigosetps);
-    }
-
-    @Override
-    public String toString() {
-        return "ArquivoDto{" +
-                "id=" + id +
-                ", nome='" + nome + '\'' +
-                ", comcodigosetps=" + comcodigosetps +
-                '}';
-    }
 }

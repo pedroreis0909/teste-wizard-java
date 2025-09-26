@@ -9,11 +9,10 @@ import jakarta.persistence.Table;
 import java.util.Objects;
 
 /**
- * Domain entity representing an Arquivo.
+ * JPA entity representing Arquivo.
  *
- * Migration note:
- * - Added field 'comcodigosetps' (int) to preserve legacy setter behavior and persist the value.
- * - Kept type int (primitive) to match legacy semantics (default 0 when not set).
+ * Note: This file was updated to include the legacy 'comerro' field (primitive int),
+ * annotated with @Column and providing legacy-compatible getter/setter methods.
  */
 @Entity
 @Table(name = "arquivo")
@@ -23,23 +22,19 @@ public class Arquivo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Example existing field for illustration; retained to keep entity meaningful.
-    @Column(name = "nome", nullable = false)
-    private String nome;
+    // TODO: (REVIEW) Mapping legacy field 'comerro' to JPA column 'comerro' to preserve legacy getter/setter behavior
+    // LegacyMapping.register("comerro"); // (placeholder - review if any custom legacy registration is needed)
 
-    // TODO: (REVIEW) Persist field 'comcodigosetps' added to Arquivo entity to store legacy int value
-    // NewSorter.sort(array);
-    // The above TODO documents the decision to add this field and persist it using JPA.
-    @Column(name = "comcodigosetps")
-    private int comcodigosetps;
+    @Column(name = "comerro")
+    private int comerro;
 
+    // Default constructor required by JPA
     public Arquivo() {
     }
 
-    public Arquivo(Long id, String nome, int comcodigosetps) {
+    public Arquivo(Long id, int comerro) {
         this.id = id;
-        this.nome = nome;
-        this.comcodigosetps = comcodigosetps;
+        this.comerro = comerro;
     }
 
     public Long getId() {
@@ -50,31 +45,14 @@ public class Arquivo {
         this.id = id;
     }
 
-    public String getNome() {
-        return nome;
+    // Preserve legacy getter name and behavior
+    public int getComerro(){
+        return this.comerro;
     }
 
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
-    /**
-     * Getter for comcodigosetps.
-     *
-     * @return the comcodigosetps value (int)
-     */
-    public int getComcodigosetps() {
-        return comcodigosetps;
-    }
-
-    /**
-     * Setter for comcodigosetps.
-     * Preserves legacy setter behavior: simply assign the provided int to the field.
-     *
-     * @param comcodigosetps the code value to set
-     */
-    public void setComcodigosetps(int comcodigosetps){
-        this.comcodigosetps = comcodigosetps;
+    // Legacy-compatible setter
+    public void setComerro(int comerro) {
+        this.comerro = comerro;
     }
 
     @Override
@@ -83,22 +61,19 @@ public class Arquivo {
         if (o == null || getClass() != o.getClass()) return false;
 
         Arquivo arquivo = (Arquivo) o;
-        return comcodigosetps == arquivo.comcodigosetps &&
-                Objects.equals(id, arquivo.id) &&
-                Objects.equals(nome, arquivo.nome);
+        return Objects.equals(id, arquivo.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, nome, comcodigosetps);
+        return Objects.hash(id);
     }
 
     @Override
     public String toString() {
         return "Arquivo{" +
                 "id=" + id +
-                ", nome='" + nome + '\'' +
-                ", comcodigosetps=" + comcodigosetps +
+                ", comerro=" + comerro +
                 '}';
     }
 }

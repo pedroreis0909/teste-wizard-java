@@ -1,119 +1,106 @@
 package br.com.meta3.java.scaffold.application.services;
 
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import br.com.meta3.java.scaffold.api.dtos.ArquivoDto;
 import br.com.meta3.java.scaffold.domain.entities.Arquivo;
 import br.com.meta3.java.scaffold.domain.repositories.ArquivoRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-/**
- * Service responsible for application-level operations on Arquivo.
- * Responsible for mapping between ArquivoDto and Arquivo entity and
- * propagating fields (including comcodigosetps) through create/update flows.
- */
 @Service
+@Transactional
 public class ArquivoService {
 
     private final ArquivoRepository arquivoRepository;
 
+    @Autowired
     public ArquivoService(ArquivoRepository arquivoRepository) {
         this.arquivoRepository = arquivoRepository;
     }
 
-    @Transactional
+    /**
+     * Creates a new Arquivo from the provided DTO.
+     * Ensures comerro from DTO is propagated to entity before saving.
+     */
     public ArquivoDto create(ArquivoDto dto) {
         Arquivo entity = toEntity(dto);
 
-        // TODO: (REVIEW) Using ArquivoRepository (domain abstraction) to persist entities
-        // ArquivoRepository.save(entity)
+        // TODO: (REVIEW) Mapping comerro field preserving legacy getter getComerro
+        entity.setComerro(dto.getComerro());
         Arquivo saved = arquivoRepository.save(entity);
 
         return toDto(saved);
     }
 
-    @Transactional
+    /**
+     * Updates an existing Arquivo with values from the provided DTO.
+     * Ensures comerro from DTO overwrites entity's comerro (preserve legacy behavior).
+     */
     public ArquivoDto update(Long id, ArquivoDto dto) {
-        Arquivo existing = arquivoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
+        Optional<Arquivo> optional = arquivoRepository.findById(id);
+        Arquivo entity = optional.orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
 
-        // Map incoming dto fields to existing entity.
-        // Keep mapping explicit to ensure comcodigosetps is propagated.
+        // Map other updatable fields if present in DTO.
+        // NOTE: Keep mapping simple; only fields known to exist should be mapped here.
         if (dto.getNome() != null) {
-            existing.setNome(dto.getNome());
+            entity.setNome(dto.getNome());
         }
 
-        // TODO: (REVIEW) Mapping comcodigosetps: legacy setter expects primitive int.
-        // To avoid potential NPEs from nullable DTO, default to 0 when DTO value is null.
-        // existing.setComcodigosetps(value)
-        Integer dtoComcodigosetps = dto.getComcodigosetps();
-        existing.setComcodigosetps(dtoComcodigosetps != null ? dtoComcodigosetps : 0);
+        // TODO: (REVIEW) Mapping comerro on update to preserve legacy behavior
+        entity.setComerro(dto.getComerro());
 
-        Arquivo saved = arquivoRepository.save(existing);
+        Arquivo saved = arquivoRepository.save(entity);
         return toDto(saved);
     }
 
-    @Transactional(readOnly = true)
-    public List<ArquivoDto> findAll() {
-        return arquivoRepository.findAll()
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
-    }
-
+    /**
+     * Finds an Arquivo by id and returns a populated DTO.
+     * Ensures DTO.comerro is populated from entity.getComerro() (legacy getter semantics).
+     */
     @Transactional(readOnly = true)
     public ArquivoDto findById(Long id) {
         Arquivo entity = arquivoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Arquivo not found with id: " + id));
+
+        // TODO: (REVIEW) Populating DTO comerro value using legacy getComerro
         return toDto(entity);
     }
 
-    @Transactional
-    public void delete(Long id) {
-        if (!arquivoRepository.existsById(id)) {
-            throw new IllegalArgumentException("Arquivo not found with id: " + id);
-        }
-        arquivoRepository.deleteById(id);
-    }
+    // -----------------
+    // Mapping helpers
+    // -----------------
 
-    /**
-     * Map DTO to Entity.
-     * Ensures comcodigosetps from DTO is set on the entity.
-     */
     private Arquivo toEntity(ArquivoDto dto) {
         Arquivo entity = new Arquivo();
 
+        // Id may be null for creation flows
         if (dto.getId() != null) {
             entity.setId(dto.getId());
         }
 
         entity.setNome(dto.getNome());
 
-        // TODO: (REVIEW) Preserving legacy behavior: use primitive int in entity setter.
-        // If DTO provides null for comcodigosetps, map to 0 to keep entity primitive semantics.
-        // entity.setComcodigosetps(value)
-        Integer dtoComcodigosetps = dto.getComcodigosetps();
-        entity.setComcodigosetps(dtoComcodigosetps != null ? dtoComcodigosetps : 0);
+        // Handle comerro mapping carefully:
+        // If DTO uses a nullable wrapper and is null, choose a sensible default (0) to avoid NPEs
+        // TODO: (REVIEW) Defaulting null DTO.comerro to 0 to match legacy primitive int semantics
+        Integer dtoComerro = dto.getComerro();
+        entity.setComerro(dtoComerro != null ? dtoComerro : 0);
 
         return entity;
     }
 
-    /**
-     * Map Entity to DTO.
-     * Includes comcodigosetps so API responses return this field.
-     */
     private ArquivoDto toDto(Arquivo entity) {
         ArquivoDto dto = new ArquivoDto();
 
         dto.setId(entity.getId());
         dto.setNome(entity.getNome());
 
-        // TODO: (REVIEW) Expose comcodigosetps on DTO responses. Entity uses primitive int;
-        // DTO exposes Integer to allow nullable clients if needed.
-        // dto.setComcodigosetps(entity.getComcodigosetps())
-        dto.setComcodigosetps(entity.getComcodigosetps());
+        // Preserve legacy behavior: read comerro from entity (likely via legacy getter getComerro)
+        // TODO: (REVIEW) Using entity.getComerro() to populate DTO.comerro following legacy accessor
+        dto.setComerro(entity.getComerro());
 
         return dto;
     }

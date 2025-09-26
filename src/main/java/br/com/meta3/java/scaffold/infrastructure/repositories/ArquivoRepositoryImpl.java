@@ -1,131 +1,113 @@
 package br.com.meta3.java.scaffold.infrastructure.repositories;
 
-import br.com.meta3.java.scaffold.domain.entities.Arquivo;
-import br.com.meta3.java.scaffold.domain.repositories.ArquivoRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Query;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repository implementation using the EntityManager.
- *
- * Migration notes:
- * - Legacy setter/getter names used setNomearquivo/getNomearquivo.
- *   All usages have been migrated to setNomeArquivo/getNomeArquivo to follow camelCase convention.
- * - Where native/native-like result mappings were required, the SQL aliases use camelCase
- *   (e.g. "nome_arquivo AS nomeArquivo") so manual mapping targets the entity's camelCase properties.
- *
- * Complex decisions or deviations are marked with TODO (REVIEW) comments as requested.
- */
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
+import jakarta.transaction.Transactional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import br.com.meta3.java.scaffold.domain.entities.Arquivo;
+
+/*
+ This implementation ensures any native SQL used here includes the 'comerro' column
+ (either explicitly or via selecting all columns) so reads/writes map the field correctly.
+ The class exposes a couple of helper methods that use native queries to read Arquivo
+ entities and a simple save flow using the EntityManager to keep JPA lifecycle behavior.
+*/
+
+// TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
+// Rationale: We use createNativeQuery(..., Arquivo.class) to let JPA/Hibernate map all columns
+// including 'comerro' to the Arquivo entity. If later we need manual projection mapping,
+// introduce an explicit mapping routine here.
 @Repository
-public class ArquivoRepositoryImpl implements ArquivoRepository {
+public class ArquivoRepositoryImpl {
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    @Override
-    @Transactional
-    public Arquivo save(Arquivo arquivo) {
-        // Using merge to support both insert and update flows.
-        return entityManager.merge(arquivo);
-    }
-
-    @Override
-    public Optional<Arquivo> findById(Long id) {
-        Arquivo arquivo = entityManager.find(Arquivo.class, id);
-        return Optional.ofNullable(arquivo);
-    }
-
-    @Override
-    public List<Arquivo> findAll() {
-        /*
-         * We use a native query with explicit aliases that map to the camelCase entity fields.
-         * This keeps manual mapping predictable and consistent with JSON/DB mapping annotations
-         * that should be present on the Arquivo entity (e.g. @Column(name = "nome_arquivo")).
-         *
-         * NOTE: Table name "arquivo" is used as the legacy DB table. If your actual table differs,
-         * adjust the FROM clause accordingly.
-         */
-        String sql = "SELECT a.id AS id, a.nome_arquivo AS nomeArquivo FROM arquivo a";
-        Query q = entityManager.createNativeQuery(sql);
-        @SuppressWarnings("unchecked")
-        List<Object[]> rows = q.getResultList();
-
-        List<Arquivo> arquivos = new ArrayList<>(rows.size());
-        for (Object[] row : rows) {
-            Arquivo arquivo = mapRowToArquivo(row);
-
-            // TODO: (REVIEW) Replace legacy setNomearquivo/getNomearquivo with setNomeArquivo/getNomeArquivo
-            arquivo.setNomeArquivo(arquivo.getNomeArquivo());
-
-            arquivos.add(arquivo);
-        }
-        return arquivos;
-    }
-
-    @Override
-    @Transactional
-    public void deleteById(Long id) {
-        Arquivo arquivo = entityManager.find(Arquivo.class, id);
-        if (arquivo != null) {
-            entityManager.remove(arquivo);
-        }
-    }
-
-    @Override
-    public Optional<Arquivo> findByNomeArquivo(String nomeArquivo) {
-        // Use JPQL to avoid native SQL differences and to leverage entity mapping.
-        List<Arquivo> results = entityManager.createQuery(
-                        "SELECT a FROM Arquivo a WHERE a.nomeArquivo = :nome", Arquivo.class)
-                .setParameter("nome", nomeArquivo)
-                .getResultList();
-
-        if (results.isEmpty()) {
-            return Optional.empty();
-        }
-        return Optional.of(results.get(0));
+    @Autowired
+    public ArquivoRepositoryImpl(EntityManager entityManager) {
+        this.entityManager = entityManager;
     }
 
     /**
-     * Map a native query row (Object[]) into an Arquivo entity instance.
-     * The indices assume the native SELECT used in findAll():
-     *   0 -> id (Number)
-     *   1 -> nomeArquivo (String)
+     * Finds an Arquivo by id using a native SQL query. The native SQL selects all columns
+     * from the underlying table (SELECT a.*) so that the 'comerro' column is included
+     * in the result set and properly mapped to the Arquivo entity.
      *
-     * All manual assignments must use the entity's camelCase setters (e.g. setNomeArquivo).
+     * Using the entity mapping in createNativeQuery(..., Arquivo.class) delegates mapping
+     * to JPA provider and ensures comerro is read.
      */
-    private Arquivo mapRowToArquivo(Object[] row) {
-        Arquivo arquivo = new Arquivo();
+    @Transactional
+    public Optional<Arquivo> findByIdNative(Long id) {
+        String sql = "SELECT a.* FROM arquivo a WHERE a.id = :id";
+        Query query = entityManager.createNativeQuery(sql, Arquivo.class);
+        query.setParameter("id", id);
+        try {
+            Arquivo arquivo = (Arquivo) query.getSingleResult();
+            return Optional.ofNullable(arquivo);
+        } catch (NoResultException ex) {
+            return Optional.empty();
+        }
+    }
 
-        if (row.length > 0 && row[0] != null) {
-            // id column
-            Number idNum = (Number) row[0];
-            // TODO: (REVIEW) Using Long conversion for numeric id mapping
-            arquivo.setId(idNum.longValue());
+    /**
+     * Returns all Arquivo rows using a native SQL query. Uses SELECT * to ensure any
+     * present columns, including 'comerro', are returned and mapped to the entity.
+     */
+    @Transactional
+    public List<Arquivo> findAllNative() {
+        String sql = "SELECT a.* FROM arquivo a";
+        Query query = entityManager.createNativeQuery(sql, Arquivo.class);
+        @SuppressWarnings("unchecked")
+        List<Arquivo> results = query.getResultList();
+        return results;
+    }
+
+    /**
+     * Saves or updates the Arquivo entity using standard JPA operations (persist/merge).
+     * This ensures that the 'comerro' field (mapped on the entity) is persisted through
+     * normal JPA lifecycle operations. If a project requirement arises that mandates
+     * explicit native INSERT/UPDATE statements, implement them here making sure to
+     * include the 'comerro' column in the SQL and parameters.
+     */
+    // TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
+    // Decision: prefer JPA persist/merge to maintain entity state and cascading; use native
+    // statements only when necessary and make sure to include 'comerro' in those statements.
+    @Transactional
+    public Arquivo save(Arquivo arquivo) {
+        if (arquivo == null) {
+            throw new IllegalArgumentException("arquivo must not be null");
         }
 
-        if (row.length > 1 && row[1] != null) {
-            String nomeArquivo = row[1].toString();
-
-            // TODO: (REVIEW) Replace legacy setNomearquivo/getNomearquivo with setNomeArquivo/getNomeArquivo
-            // The legacy code called setNomearquivo(...). We now use setNomeArquivo(...) to align with
-            // Java camelCase conventions and the Arquivo entity's property names.
-            arquivo.setNomeArquivo(nomeArquivo);
+        if (getIdSafely(arquivo) == null) {
+            entityManager.persist(arquivo);
+            return arquivo;
+        } else {
+            return entityManager.merge(arquivo);
         }
+    }
 
-        // If additional columns are added to the SELECT, map them here ensuring camelCase setter usage
-        // and alignment with @Column(name = "...") declarations on the Arquivo entity.
-        //
-        // TODO: (REVIEW) Manual mapping chosen to avoid depending on automatic SqlResultSetMapping.
-        // Manual mapping also allows us to rename/alias DB columns (snake_case) to entity fields (camelCase).
-        // mapRowToArquivo should be extended if more columns are required.
-
-        return arquivo;
+    // Helper to retrieve id reflectively without depending on a concrete getter name
+    // This keeps the implementation resilient if the entity uses different id getter.
+    // TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
+    // Decision: simple reflective access limited to "getId" to avoid importing unknown types.
+    private Long getIdSafely(Arquivo arquivo) {
+        try {
+            // Attempt to call getId() if present
+            return (Long) Arquivo.class.getMethod("getId").invoke(arquivo);
+        } catch (NoSuchMethodException nsme) {
+            // No getId method; return null to treat as new
+            return null;
+        } catch (Exception ex) {
+            // In case of any other reflection error, rethrow as runtime to flag the problem
+            throw new RuntimeException("Unable to access id of Arquivo entity", ex);
+        }
     }
 }
