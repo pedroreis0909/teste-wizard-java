@@ -6,40 +6,38 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.io.Serializable;
+import jakarta.validation.constraints.Min;
 
 /**
  * Domain entity representing an Arquivo.
  *
  * Migration notes:
- * - Introduced quantidadeRegistro field mapped to database column "quantidade_registro".
- * - Added modern camelCase getter getQuantidadeRegistro().
- * - Kept legacy getter getQuantidaderegistro() delegating to the modern getter to preserve behavior.
+ * - Added camelCase property 'quantidadeRegistro' mapped to DB column 'quantidaderegistro'.
+ * - Added validation @Min(0) to ensure non-negative values.
+ * - Kept a deprecated legacy setter 'setQuantidaderegistro' delegating to the new setter
+ *   to preserve backward compatibility with any code that may still call the old method.
  */
 @Entity
 @Table(name = "arquivo")
-public class Arquivo implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class Arquivo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "nome")
-    private String nome;
+    // TODO: (REVIEW) Using setQuantidadeRegistro for setQuantidaderegistro in legacy code
+    // setQuantidadeRegistro(value)
+    // The decision above preserves a camelCase Java convention while mapping to the old DB column name.
 
-    // TODO: (REVIEW) Added quantidadeRegistro mapped to quantidade_registro DB column with @Column
-    @Column(name = "quantidade_registro")
-    private Integer quantidadeRegistro;
+    /**
+     * New camelCase property to follow Java naming conventions.
+     * Mapped explicitly to the legacy DB column "quantidaderegistro".
+     */
+    @Column(name = "quantidaderegistro")
+    @Min(0)
+    private int quantidadeRegistro;
 
     public Arquivo() {
-    }
-
-    public Arquivo(Long id, String nome, Integer quantidadeRegistro) {
-        this.id = id;
-        this.nome = nome;
-        this.quantidadeRegistro = quantidadeRegistro;
     }
 
     public Long getId() {
@@ -50,39 +48,36 @@ public class Arquivo implements Serializable {
         this.id = id;
     }
 
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
+    public int getQuantidadeRegistro() {
+        return quantidadeRegistro;
     }
 
     /**
-     * Modern camelCase getter for quantidadeRegistro.
+     * Standardized setter using camelCase naming.
      *
-     * Returns the Integer wrapper type to allow presence of null (no value).
+     * @param quantidadeRegistro non-negative quantity of registros
      */
-    public Integer getQuantidadeRegistro() {
-        return this.quantidadeRegistro;
-    }
-
-    public void setQuantidadeRegistro(Integer quantidadeRegistro) {
+    public void setQuantidadeRegistro(int quantidadeRegistro) {
         this.quantidadeRegistro = quantidadeRegistro;
     }
 
-    // TODO: (REVIEW) Delegating legacy getter getQuantidaderegistro() to modern getQuantidadeRegistro and handling null to avoid NPE
-    getQuantidadeRegistro();
+    // TODO: (REVIEW) Keep legacy setter signature delegating to new setter for backward compatibility
+    // setQuantidadeRegistro(quantidaderegistro)
     /**
-     * Legacy getter kept to preserve existing callers relying on the old method name.
-     *
-     * Original signature returned primitive int. To avoid NullPointerException when
-     * quantidadeRegistro is null, we return 0 in that case (conservative default).
-     *
-     * This method delegates to the modern getter (getQuantidadeRegistro).
+     * Deprecated legacy-style setter kept for compatibility with existing code that may
+     * call the old method name. Delegates to the standardized setter.
      */
-    public int getQuantidaderegistro() {
-        Integer v = getQuantidadeRegistro();
-        return v == null ? 0 : v;
+    @Deprecated
+    public void setQuantidaderegistro(int quantidaderegistro) {
+        // Delegate to the new standardized setter to keep behavior consistent.
+        setQuantidadeRegistro(quantidaderegistro);
+    }
+
+    @Override
+    public String toString() {
+        return "Arquivo{" +
+                "id=" + id +
+                ", quantidadeRegistro=" + quantidadeRegistro +
+                '}';
     }
 }

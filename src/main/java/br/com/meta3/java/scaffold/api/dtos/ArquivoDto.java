@@ -1,37 +1,33 @@
 package br.com.meta3.java.scaffold.api.dtos;
 
-import java.io.Serializable;
+import jakarta.validation.constraints.Min;
+import java.util.Objects;
 
-import jakarta.validation.constraints.PositiveOrZero;
-
-/*
- // TODO: (REVIEW) Mapping legacy getQuantidaderegistro() to DTO field quantidadeRegistro
- // ArquivoDto.setQuantidadeRegistro(entity.getQuantidaderegistro());
- 
- Explanation: The legacy code exposed a getter named getQuantidaderegistro() (lowercase 'r').
- To keep a clean and idiomatic API DTO we expose the property as 'quantidadeRegistro' (camelCase).
- The commented mapping line above is a reminder for whoever implements the entity->dto mapping
- to read from the legacy getter and set this DTO property accordingly.
-*/
-
-public class ArquivoDto implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+/**
+ * Data Transfer Object for Arquivo entity used by controllers and services.
+ * Only basic fields are present to represent file metadata and the migrated
+ * quantidadeRegistro property.
+ */
+public class ArquivoDto {
 
     private Long id;
     private String nome;
+    private String tipo;
+    private Long tamanho;
 
-    // New property added to carry the quantidadeRegistro from the entity to API clients.
-    // Validate that the value is not negative when provided.
-    @PositiveOrZero(message = "quantidadeRegistro must be zero or a positive integer")
+    // New property migrated from legacy code.
+    // Applying Jakarta Validation to ensure non-negative values.
+    @Min(0)
     private Integer quantidadeRegistro;
 
     public ArquivoDto() {
     }
 
-    public ArquivoDto(Long id, String nome, Integer quantidadeRegistro) {
+    public ArquivoDto(Long id, String nome, String tipo, Long tamanho, Integer quantidadeRegistro) {
         this.id = id;
         this.nome = nome;
+        this.tipo = tipo;
+        this.tamanho = tamanho;
         this.quantidadeRegistro = quantidadeRegistro;
     }
 
@@ -51,6 +47,22 @@ public class ArquivoDto implements Serializable {
         this.nome = nome;
     }
 
+    public String getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
+
+    public Long getTamanho() {
+        return tamanho;
+    }
+
+    public void setTamanho(Long tamanho) {
+        this.tamanho = tamanho;
+    }
+
     public Integer getQuantidadeRegistro() {
         return quantidadeRegistro;
     }
@@ -59,11 +71,41 @@ public class ArquivoDto implements Serializable {
         this.quantidadeRegistro = quantidadeRegistro;
     }
 
+    // TODO: (REVIEW) Migrated legacy setter name `setQuantidaderegistro(int)` to
+    // `setQuantidadeRegistro(Integer)`. Kept an adapter deprecated method to preserve
+    // backward compatibility with any legacy callers that may still use the old name.
+    // The legacy signature used a primitive int; here we accept int and delegate to the
+    // new boxed Integer setter to allow nullability in modern DTO usage.
+    @Deprecated
+    public void setQuantidaderegistro(int quantidaderegistro) {
+        // Delegate to the new setter to centralize validation/assignment logic.
+        this.setQuantidadeRegistro(quantidaderegistro);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ArquivoDto)) return false;
+        ArquivoDto that = (ArquivoDto) o;
+        return Objects.equals(id, that.id) &&
+                Objects.equals(nome, that.nome) &&
+                Objects.equals(tipo, that.tipo) &&
+                Objects.equals(tamanho, that.tamanho) &&
+                Objects.equals(quantidadeRegistro, that.quantidadeRegistro);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, nome, tipo, tamanho, quantidadeRegistro);
+    }
+
     @Override
     public String toString() {
         return "ArquivoDto{" +
                 "id=" + id +
                 ", nome='" + nome + '\'' +
+                ", tipo='" + tipo + '\'' +
+                ", tamanho=" + tamanho +
                 ", quantidadeRegistro=" + quantidadeRegistro +
                 '}';
     }
