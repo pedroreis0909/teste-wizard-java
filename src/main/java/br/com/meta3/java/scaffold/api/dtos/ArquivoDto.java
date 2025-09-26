@@ -1,33 +1,42 @@
 package br.com.meta3.java.scaffold.api.dtos;
 
 import jakarta.validation.constraints.NotBlank;
-import java.util.Objects;
+import jakarta.validation.constraints.NotNull;
+import java.io.Serializable;
 
-/*
- TODO: (REVIEW) Renamed legacy 'codigoescola' to 'codigoEscola' and added @NotBlank for Jakarta validation
- // Legacy code: public void setCodigoescola(String codigoescola){ this.codigoescola = codigoescola; }
- The decision:
- - Use camelCase property name 'codigoEscola' to follow Java naming conventions and typical DTO patterns.
- - Apply @NotBlank at field level to ensure incoming API requests provide a non-empty value.
- - Provide standard getter/setter names (getCodigoEscola/setCodigoEscola) so Jackson/Spring binders work correctly.
-*/
-public class ArquivoDto {
+/**
+ * Data Transfer Object for Arquivo.
+ * This DTO is used in API layer to carry file metadata between client and server.
+ *
+ * Note: We add 'anovigencia' to carry the legacy field through the API layer,
+ * keeping DTO <-> Entity mapping consistent with the domain model.
+ */
+public class ArquivoDto implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private Long id;
-    private String nome;
-    private String caminho;
 
-    @NotBlank(message = "codigoEscola must not be blank")
-    private String codigoEscola;
+    @NotBlank
+    private String nome;
+
+    private String tipo;
+
+    private Long tamanho;
+
+    // New property introduced to mirror the legacy domain/entity field.
+    // It will be carried through API requests/responses so mapping remains consistent.
+    private String anovigencia;
 
     public ArquivoDto() {
     }
 
-    public ArquivoDto(Long id, String nome, String caminho, String codigoEscola) {
+    public ArquivoDto(Long id, String nome, String tipo, Long tamanho, String anovigencia) {
         this.id = id;
         this.nome = nome;
-        this.caminho = caminho;
-        this.codigoEscola = codigoEscola;
+        this.tipo = tipo;
+        this.tamanho = tamanho;
+        this.anovigencia = anovigencia;
     }
 
     public Long getId() {
@@ -46,37 +55,30 @@ public class ArquivoDto {
         this.nome = nome;
     }
 
-    public String getCaminho() {
-        return caminho;
+    public String getTipo() {
+        return tipo;
     }
 
-    public void setCaminho(String caminho) {
-        this.caminho = caminho;
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
     }
 
-    public String getCodigoEscola() {
-        return codigoEscola;
+    public Long getTamanho() {
+        return tamanho;
     }
 
-    // Preserves legacy behavior of accepting a string and assigning to the DTO field.
-    public void setCodigoEscola(String codigoEscola) {
-        this.codigoEscola = codigoEscola;
+    public void setTamanho(Long tamanho) {
+        this.tamanho = tamanho;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ArquivoDto)) return false;
-        ArquivoDto that = (ArquivoDto) o;
-        return Objects.equals(id, that.id) &&
-               Objects.equals(nome, that.nome) &&
-               Objects.equals(caminho, that.caminho) &&
-               Objects.equals(codigoEscola, that.codigoEscola);
+    public String getAnovigencia() {
+        return anovigencia;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, nome, caminho, codigoEscola);
+    // TODO: (REVIEW) Added 'anovigencia' property to mirror legacy entity and ensure it flows through the API layer
+    // The following assignment preserves the legacy setter behavior by directly setting the DTO field.
+    public void setAnovigencia(String anovigencia){
+        this.anovigencia = anovigencia;
     }
 
     @Override
@@ -84,8 +86,9 @@ public class ArquivoDto {
         return "ArquivoDto{" +
                 "id=" + id +
                 ", nome='" + nome + '\'' +
-                ", caminho='" + caminho + '\'' +
-                ", codigoEscola='" + codigoEscola + '\'' +
+                ", tipo='" + tipo + '\'' +
+                ", tamanho=" + tamanho +
+                ", anovigencia='" + anovigencia + '\'' +
                 '}';
     }
 }

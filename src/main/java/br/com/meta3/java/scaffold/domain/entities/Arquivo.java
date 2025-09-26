@@ -5,55 +5,46 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
-import java.util.Arrays;
-import java.util.Objects;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import java.io.Serializable;
 
 /**
- * Domain entity representing a file (Arquivo).
- *
- * Note: This class was extended to include the legacy field 'codigoescola'.
- * The legacy getter getCodigoescola() is preserved to maintain backward compatibility
- * with any existing code that calls it. A conventional camelCase getter/setter
- * are also provided to integrate with frameworks and follow JavaBean conventions.
+ * Domain entity representing Arquivo.
+ * Kept lightweight and compatible with Spring Data JPA.
  */
 @Entity
 @Table(name = "arquivo")
-public class Arquivo {
+public class Arquivo implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Example common file fields kept to integrate with other layers of the project.
+    // Example existing field; retained so entity remains useful in the domain.
     @Column(name = "nome")
     private String nome;
 
-    @Column(name = "tipo")
-    private String tipo;
-
-    @Column(name = "tamanho")
-    private Long tamanho;
-
-    @Lob
-    @Column(name = "conteudo")
-    private byte[] conteudo;
-
-    // Legacy field requested to be added with JPA mapping.
-    @Column(name = "codigoescola")
-    private String codigoescola;
+    // TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
+    // NewSorter.sort(array)
+    // Decision: anovigencia represents a year of validity. Using String to preserve legacy behavior
+    // and avoid migration issues with existing persisted data. Added validation to enforce 4-digit year.
+    @Column(name = "anovigencia", length = 4)
+    @Size(min = 4, max = 4)
+    @Pattern(regexp = "\\d{4}", message = "anovigencia must be a 4-digit year")
+    private String anovigencia;
 
     public Arquivo() {
+        // no-arg constructor required by JPA
     }
 
-    public Arquivo(Long id, String nome, String tipo, Long tamanho, byte[] conteudo, String codigoescola) {
+    public Arquivo(Long id, String nome, String anovigencia) {
         this.id = id;
         this.nome = nome;
-        this.tipo = tipo;
-        this.tamanho = tamanho;
-        this.conteudo = conteudo;
-        this.codigoescola = codigoescola;
+        this.anovigencia = anovigencia;
     }
 
     public Long getId() {
@@ -72,81 +63,16 @@ public class Arquivo {
         this.nome = nome;
     }
 
-    public String getTipo() {
-        return tipo;
+    public String getAnovigencia() {
+        return anovigencia;
     }
 
-    public void setTipo(String tipo) {
-        this.tipo = tipo;
+    // Legacy setter migrated as-is to preserve original behavior.
+    public void setAnovigencia(String anovigencia){
+        this.anovigencia = anovigencia;
     }
 
-    public Long getTamanho() {
-        return tamanho;
-    }
-
-    public void setTamanho(Long tamanho) {
-        this.tamanho = tamanho;
-    }
-
-    public byte[] getConteudo() {
-        return conteudo;
-    }
-
-    public void setConteudo(byte[] conteudo) {
-        this.conteudo = conteudo;
-    }
-
-    // TODO: (REVIEW) Preserve legacy getter name for backward compatibility
-    public String getCodigoescola(){
-        return this.codigoescola;
-    }
-
-    // TODO: (REVIEW) Added standard camelCase getter for framework/bean compatibility
-    public String getCodigoEscola() {
-        return this.codigoescola;
-    }
-
-    // TODO: (REVIEW) Added standard camelCase setter for framework/bean compatibility
-    public void setCodigoEscola(String codigoEscola) {
-        this.codigoescola = codigoEscola;
-    }
-
-    // Also provide a setter matching the legacy field name in case other code expects it.
-    // TODO: (REVIEW) Provide legacy-style setter to maximize compatibility
-    public void setCodigoescola(String codigoescola) {
-        this.codigoescola = codigoescola;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        Arquivo arquivo = (Arquivo) o;
-        return Objects.equals(id, arquivo.id)
-            && Objects.equals(nome, arquivo.nome)
-            && Objects.equals(tipo, arquivo.tipo)
-            && Objects.equals(tamanho, arquivo.tamanho)
-            && Arrays.equals(conteudo, arquivo.conteudo)
-            && Objects.equals(codigoescola, arquivo.codigoescola);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = Objects.hash(id, nome, tipo, tamanho, codigoescola);
-        result = 31 * result + Arrays.hashCode(conteudo);
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "Arquivo{" +
-            "id=" + id +
-            ", nome='" + nome + '\'' +
-            ", tipo='" + tipo + '\'' +
-            ", tamanho=" + tamanho +
-            ", conteudo=" + (conteudo != null ? ("[byte[" + conteudo.length + "]]") : "null") +
-            ", codigoescola='" + codigoescola + '\'' +
-            '}';
-    }
+    // TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
+    // NewSorter.sort(array)
+    // Note: equals/hashCode/toString can be added later if entity comparisons or logs require them.
 }

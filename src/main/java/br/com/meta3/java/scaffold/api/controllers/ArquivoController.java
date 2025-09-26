@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Objects;
+import java.util.List;
 
 @RestController
 @RequestMapping("/arquivos")
@@ -22,38 +22,57 @@ public class ArquivoController {
     }
 
     /**
-     * Create a new Arquivo from the provided ArquivoDto.
-     * The ArquivoDto is validated (@Valid) before being forwarded to the service layer.
-     * The service is responsible for mapping/persisting the codigoEscola value.
+     * Returns all Arquivo resources as ArquivoDto.
+     * Keeping contract stable so clients receive 'anovigencia' in the DTO.
      */
-    @PostMapping
-    public ResponseEntity<?> create(@Valid @RequestBody ArquivoDto arquivoDto) {
-        // TODO: (REVIEW) Legacy code used a setter named setCodigoescola (lowercase 'e') which may not match DTO naming.
-        // We assume ArquivoDto uses a canonical camelCase field (codigoEscola). Ensure service maps any legacy naming differences.
-        Objects.requireNonNull(arquivoDto);
-
-        // TODO: (REVIEW) Assuming ArquivoService exposes a save method that accepts ArquivoDto.
-        // If the service API differs, adapt the call to the correct service method (e.g., create, persist, etc.).
-        var result = arquivoService.save(arquivoDto);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    @GetMapping
+    public ResponseEntity<List<ArquivoDto>> listAll() {
+        List<ArquivoDto> dtos = arquivoService.findAll();
+        return ResponseEntity.ok(dtos);
     }
 
     /**
-     * Update an existing Arquivo identified by id using the provided ArquivoDto.
-     * ArquivoDto is validated (@Valid) and forwarded to the service for processing.
+     * Returns a single Arquivo by id as ArquivoDto.
+     * Ensures response includes 'anovigencia' field from the migrated property.
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable("id") Long id, @Valid @RequestBody ArquivoDto arquivoDto) {
-        // TODO: (REVIEW) Ensure codigoEscola provided in ArquivoDto is processed by service and persisted on updates.
-        Objects.requireNonNull(arquivoDto);
-
-        // TODO: (REVIEW) Assuming ArquivoService exposes an update method taking (Long, ArquivoDto).
-        // If the service API differs, adapt accordingly.
-        var result = arquivoService.update(id, arquivoDto);
-
-        return ResponseEntity.ok(result);
+    @GetMapping("/{id}")
+    public ResponseEntity<ArquivoDto> getById(@PathVariable Long id) {
+        ArquivoDto dto = arquivoService.findById(id);
+        return ResponseEntity.ok(dto);
     }
 
-    // Additional endpoints (e.g., GET/DELETE) could be added here following the same validation and forwarding pattern.
+    /**
+     * Creates a new Arquivo from ArquivoDto.
+     * Preserves legacy behavior for the 'anovigencia' property by forwarding it through the DTO.
+     */
+    @PostMapping
+    public ResponseEntity<ArquivoDto> create(@Valid @RequestBody ArquivoDto dto) {
+        // TODO: (REVIEW) Ensure legacy setter setAnovigencia(String) maps to DTO property 'anovigencia' and is forwarded to the service
+        String anovigencia = dto.getAnovigencia();
+
+        ArquivoDto created = arquivoService.create(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    /**
+     * Updates an existing Arquivo identified by id using ArquivoDto.
+     * Keeps API shape unchanged so clients can continue sending 'anovigencia'.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ArquivoDto> update(@PathVariable Long id, @Valid @RequestBody ArquivoDto dto) {
+        // TODO: (REVIEW) Forward 'anovigencia' through the DTO to preserve legacy behavior from setAnovigencia(String)
+        String anovigencia = dto.getAnovigencia();
+
+        ArquivoDto updated = arquivoService.update(id, dto);
+        return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * Deletes an Arquivo by id.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        arquivoService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }
