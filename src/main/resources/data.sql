@@ -1,18 +1,29 @@
-// TODO: (REVIEW) Defaulting semdocumento to 0 for seeded Arquivo records to match new entity setter setSemdocumento(int)
-// Reason: Legacy code exposes setSemdocumento(int). Treat semdocumento as an integer flag (0 = no document, 1 = has document).
--- Updated seed data to include semdocumento column so initial DB state matches the updated entity shape.
-
-/* Idempotent seed: remove existing rows in arquivo (if any) then insert seed rows with semdocumento values.
-   NOTE: Ensure the Arquivo entity/table contains the semdocumento column (int). If using JPA auto-ddl, the column
-   should be created from the entity. If not present, add migration to create the column before this seed runs.
+/*
+ // TODO: (REVIEW) Ensure comcodigosetps is present in Arquivo entity and DB seed
+ // The legacy getter for comcodigosetps was migrated to the entity.
+ // We add/ensure the column in the H2 seed and set sensible defaults (0).
+ // Decisions:
+ // - Try to add the column if it's missing and set a DEFAULT 0 so JPA/H2 schemas remain compatible.
+ // - Update existing rows to ensure no NULLs remain.
+ // - Provide a couple of sample INSERTs that include comcodigosetps so explicit seed data aligns with the entity.
+ // NOTE: This block uses the required TODO template to document the migration decision.
+ NewSorter.sort(array)
 */
 
-// Delete existing data to make the seed idempotent
-DELETE FROM arquivo;
+-- Ensure the comcodigosetps column exists and has a sensible default.
+-- Using IF NOT EXISTS for H2 (supported in recent H2 versions). If not supported in the environment,
+-- the ALTER may fail and should be adjusted accordingly in a follow-up review.
+ALTER TABLE arquivo ADD COLUMN IF NOT EXISTS comcodigosetps INT DEFAULT 0;
 
--- Seed records: semdocumento set to 0 by default for typical files, 1 where applicable.
-INSERT INTO arquivo (id, nome, tipo, tamanho, semdocumento) VALUES (1, 'documento1.pdf', 'application/pdf', 1024, 0);
-INSERT INTO arquivo (id, nome, tipo, tamanho, semdocumento) VALUES (2, 'imagem1.png', 'image/png', 2048, 0);
-INSERT INTO arquivo (id, nome, tipo, tamanho, semdocumento) VALUES (3, 'relatorio.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 4096, 1);
-INSERT INTO arquivo (id, nome, tipo, tamanho, semdocumento) VALUES (4, 'planilha.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 5120, 0);
-INSERT INTO arquivo (id, nome, tipo, tamanho, semdocumento) VALUES (5, 'apresentacao.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 8192, 0);
+-- Make sure existing rows have a non-null value for comcodigosetps
+UPDATE arquivo SET comcodigosetps = 0 WHERE comcodigosetps IS NULL;
+
+-- Seed data for arquivo table.
+-- The INSERT statements explicitly include comcodigosetps to match the updated entity.
+-- If your Arquivo entity/table has different column names, adjust these INSERTs accordingly.
+INSERT INTO arquivo (id, nome, caminho, tipo, tamanho, comcodigosetps) VALUES
+(1, 'documento_exemplo.pdf', '/files/documento_exemplo.pdf', 'application/pdf', 2048, 0),
+(2, 'imagem_exemplo.png', '/files/imagem_exemplo.png', 'image/png', 10240, 0),
+(3, 'relatorio_ano.csv', '/files/relatorio_ano.csv', 'text/csv', 512, 0);
+
+-- End of data.sql seed updates for comcodigosetps.

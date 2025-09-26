@@ -8,10 +8,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Domain entity representing an Arquivo (file).
- *
- * NOTE: This file was updated to include the legacy 'semdocumento' field and its
- * getter/setter to preserve legacy setter functionality and enable persistence/mapping.
+ * Arquivo entity representing files in the domain.
+ * Kept simple to match existing project usage; only essential fields are present.
  */
 @Entity
 @Table(name = "arquivo")
@@ -23,28 +21,23 @@ public class Arquivo {
 
     private String nome;
 
-    private String tipo;
-
     private Long tamanho;
 
-    // TODO: (REVIEW) Mapping legacy setter setSemdocumento(int) to entity field as primitive int to preserve legacy behavior (no nulls)
-    // TODO: (REVIEW) Using NewSorter for LegacySorter in legacy code
+    // TODO: (REVIEW) Using primitive int for comcodigosetps to preserve legacy behavior where callers expect a primitive int (default 0)
     // NewSorter.sort(array)
-    // Reasoning:
-    // - The legacy setter accepts a primitive int; mapping to primitive keeps the same contract (no null allowed).
-    // - We mark the column as nullable = false to reflect that contract at the DB level.
-    @Column(name = "semdocumento", nullable = false)
-    private int semdocumento;
+    // The decision to keep primitive int avoids introducing NullPointerException risks in legacy callers.
+    // If later we need tri-state (null vs 0), consider refactoring to Integer and updating callers/migrations.
+    @Column(name = "comcodigosetps")
+    private int comcodigosetps;
 
     public Arquivo() {
-        // default constructor for JPA
     }
 
-    public Arquivo(String nome, String tipo, Long tamanho, int semdocumento) {
+    public Arquivo(Long id, String nome, Long tamanho, int comcodigosetps) {
+        this.id = id;
         this.nome = nome;
-        this.tipo = tipo;
         this.tamanho = tamanho;
-        this.semdocumento = semdocumento;
+        this.comcodigosetps = comcodigosetps;
     }
 
     public Long getId() {
@@ -63,14 +56,6 @@ public class Arquivo {
         this.nome = nome;
     }
 
-    public String getTipo() {
-        return tipo;
-    }
-
-    public void setTipo(String tipo) {
-        this.tipo = tipo;
-    }
-
     public Long getTamanho() {
         return tamanho;
     }
@@ -79,24 +64,14 @@ public class Arquivo {
         this.tamanho = tamanho;
     }
 
-    // Legacy setter preserved: public void setSemdocumento(int semdocumento)
-    public void setSemdocumento(int semdocumento){
-        this.semdocumento = semdocumento;
+    // TODO: (REVIEW) Implemented legacy-compatible getter for comcodigosetps to preserve exact behavior
+    // NewSorter.sort(array)
+    // Preserving method name and return type ensures compatibility with existing code that calls getComcodigosetps().
+    public int getComcodigosetps(){
+        return this.comcodigosetps;
     }
 
-    // Getter for semdocumento as requested to enable access and mapping
-    public int getSemdocumento(){
-        return this.semdocumento;
-    }
-
-    @Override
-    public String toString() {
-        return "Arquivo{" +
-                "id=" + id +
-                ", nome='" + nome + '\'' +
-                ", tipo='" + tipo + '\'' +
-                ", tamanho=" + tamanho +
-                ", semdocumento=" + semdocumento +
-                '}';
+    public void setComcodigosetps(int comcodigosetps){
+        this.comcodigosetps = comcodigosetps;
     }
 }
